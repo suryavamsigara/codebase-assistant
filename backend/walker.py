@@ -1,7 +1,4 @@
 from pathlib import Path
-from tree_sitter import Language, Parser, Tree, Node
-import tree_sitter_python as tspython
-from typing import Generator
 
 class RepoWalker:
     def __init__(self, repo_path: str, repo_name: str): # repo_path: tmp/r1

@@ -1,0 +1,73 @@
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import faiss
+from typing import List, Dict
+
+class Embedder:
+    def __init__(self, model_name:str="BAAI/bge-small-en-v1.5", chunks: List[Dict]=None):
+        self.embeddings = None
+        self.index = None
+        self.model = SentenceTransformer(model_name)
+        self.chunks = chunks
+
+    def create_contextual_header(self, chunk: Dict) -> str:
+        header_parts = [
+            f"Language: {chunk.get('language', 'unknown')}",
+            f"File: {chunk.get('file_path', 'unknown')}",
+            f"Type: {chunk.get('type', 'code')}"
+        ]
+
+        if chunk.get('name'):
+            header_parts.append(f"Name: {chunk['name']}")
+        
+        header = " | ".join(header_parts)
+
+        return f"{header}\n---\n{chunk['code']}"
+    
+    def embed_chunks(self, chunks: List[Dict]):
+        print("Embedding chunks")
+        texts_to_embed = [self.create_contextual_header(chunk) for chunk in chunks]
+        # print(texts_to_embed[:3])
+        self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
+
+        faiss.normalize_L2(self.embeddings)
+
+        dimension = self.embeddings.shape[1]
+        self.index = faiss.IndexFlatIP(dimension)
+        self.index.add(self.embeddings)
+
+    def save(self, path: str):
+        """Save index and metadata"""
+        print("Saving index")
+        faiss.write_index(self.index, f"{path}/index.faiss")
+
+    def load(self, path: str):
+        print("Loading index")
+        self.index = faiss.read_index(f"{path}/index.faiss")
+    
+    def search(self, query: str, k: int = 1):
+        print("Searching query")
+        query_embedding = self.model.encode([query]).astype('float32')
+        faiss.normalize_L2(query_embedding)
+
+        scores, indices = self.index.search(query_embedding, min(k, len(self.chunks)))
+
+        results = []
+
+        for score, idx in zip(scores[0], indices[0]):
+            chunk = self.chunks[idx]
+
+            results.append({
+                'rank': len(results) + 1,
+                'score': float(score),
+                'code': chunk['code'],
+                'file_path': chunk['file_path'],
+                'start_line': chunk['start_line'],
+                'end_line': chunk['end_line']
+            })
+
+            if len(results) >= k:
+                break
+        
+        return results
+

@@ -47,8 +47,7 @@ class CodeChunker:
                     chunks.append({
                         'type': 'function',
                         'name': name,
-                        'code': code,
-                        'body': body,
+                        'code': body,
                         'start_line': node.start_point[0] + 1,
                         'end_line': node.end_point[0] + 1,
                         'language': 'python',
