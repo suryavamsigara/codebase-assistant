@@ -12,3 +12,4 @@ wheels/
 tmp/
 tests/
 db/
+test.py

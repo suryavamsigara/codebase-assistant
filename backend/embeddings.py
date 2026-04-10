@@ -29,6 +29,7 @@ class Embedder:
         texts_to_embed = [self.create_contextual_header(chunk) for chunk in chunks]
         # print(texts_to_embed[:3])
         self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
+        print("Embeds: ", self.embeddings.shape)
 
         faiss.normalize_L2(self.embeddings)
 
@@ -63,7 +64,8 @@ class Embedder:
                 'code': chunk['code'],
                 'file_path': chunk['file_path'],
                 'start_line': chunk['start_line'],
-                'end_line': chunk['end_line']
+                'end_line': chunk['end_line'],
+                'file_path': chunk['file_path']
             })
 
             if len(results) >= k:

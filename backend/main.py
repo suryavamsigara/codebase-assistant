@@ -7,6 +7,7 @@ chunker = CodeChunker()
 
 
 def main():
+    all_chunks = []
     for file_data in walker.walk():
         print(f"Processing: {file_data['file_path']}")
 
@@ -18,19 +19,25 @@ def main():
         # for chunk in chunks:
         #     print(f"\nName: {chunk['name']}\nBody: {chunk['body']}\n===================================\n")
 
-        # for chunk in chunks: update chunk by adding repo name, last modified, git author, full file path (file_data[file_path])
+        for chunk in chunks:
+            chunk['repo_name'] = file_data['repo_name']
+            chunk['full_file_path'] = file_data['file_path']
+            # Add git author, last_modified
+        
+        all_chunks.extend(chunks)
+        print(f"  Found {len(chunks)} chunks from this file. Total so far: {len(all_chunks)}")
         # embed(chunks)
 
-    embedder = Embedder(chunks=chunks)
-    embedder.embed_chunks(chunks)
+    embedder = Embedder(chunks=all_chunks)
+    embedder.embed_chunks(all_chunks)
     embedder.save("db")
     embedder.load("db")
     print("======================")
-    print(embedder.search("convert string to integer safely"))
+    print(embedder.search("backward propagationfor matrix multiplication"))
     print("======================")
     print(embedder.search("remove duplicate items from list"))
     print("======================")
-    print(embedder.search("sorting algorithm"))
+    print(embedder.search("How to build computation order?"))
     print("======================")
     print(embedder.search("compute n factorial recursively"))
 

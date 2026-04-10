@@ -15,26 +15,26 @@ class RepoWalker:
     
     def walk(self):
         """Yields file paths and meta data"""
-        cwd: Path = Path.cwd()
-        target_dir: Path = (cwd / self.repo_path).resolve()
-
-        if not target_dir.is_relative_to(cwd):
-            print(f"Directory {target_dir} is outside current working directory")
-            # return
+        target_dir: Path = self.repo_path
         
         if not target_dir.is_dir():
             print(f"Directory {target_dir} doesn't exist")
-            # return
-        
-        if not target_dir.is_dir():
-            print(f"{target_dir} is not a directory.")
-            # return
+            return
 
         for root, dirs, files in target_dir.walk(): # (Path, List[str], List[str])
             # print(f"Root: {root}, dirs: {dirs}, files: {files}")
 
+            dirs[:] = [d for d in dirs if d not in self.skip_dirs]
+
             for file in files:
-                file_path = (Path(root) / file).resolve()
+                if file in self.skip_files:
+                    continue
+
+                file_path = root / file
+                if not file_path.suffix == ".py":
+                    continue
+                
+                print(f"Yielding file : {file_path}")
 
                 yield {
                     'file_path': str(file_path.relative_to(self.repo_path)),
