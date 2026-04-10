@@ -44,6 +44,17 @@ class CodeChunker:
                     else:
                         body = ""
 
+                    parent = node.parent
+                    parent_class = None
+
+                    while parent:
+                        if parent.type == 'class_definition':
+                            class_name_node = parent.child_by_field_name('name')
+                            if class_name_node:
+                                parent_class = code[class_name_node.start_byte:class_name_node.end_byte]
+                            break
+                        parent = parent.parent
+
                     chunks.append({
                         'type': 'function',
                         'name': name,
@@ -51,6 +62,23 @@ class CodeChunker:
                         'start_line': node.start_point[0] + 1,
                         'end_line': node.end_point[0] + 1,
                         'language': 'python',
-                        'file_path': file_path
+                        'file_path': file_path,
+                        'parent_class': parent_class
+                    })
+            
+            elif node.type == 'class_definition':
+                name_node = node.child_by_field_name('name')
+                if name_node:
+                    name = code[name_node.start_byte:name_node.end_byte]
+
+                    chunks.append({
+                        'type': 'class',
+                        'name': name,
+                        'start_line': node.start_point[0] + 1,
+                        'end_line': node.end_point[0] + 1,
+                        'language': 'python',
+                        'file_path': file_path,
+                        'code': 'code', # Change
+                        'parent_class': 'parent' # Change
                     })
         return chunks

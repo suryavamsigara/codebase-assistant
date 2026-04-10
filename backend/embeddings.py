@@ -65,7 +65,8 @@ class Embedder:
                 'file_path': chunk['file_path'],
                 'start_line': chunk['start_line'],
                 'end_line': chunk['end_line'],
-                'file_path': chunk['file_path']
+                'file_path': chunk['file_path'],
+                'parent_class': chunk['parent_class']
             })
 
             if len(results) >= k:

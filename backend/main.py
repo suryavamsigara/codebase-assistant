@@ -35,7 +35,7 @@ def main():
     print("======================")
     print(embedder.search("backward propagationfor matrix multiplication"))
     print("======================")
-    print(embedder.search("remove duplicate items from list"))
+    print(embedder.search("to deposit money"))
     print("======================")
     print(embedder.search("How to build computation order?"))
     print("======================")
