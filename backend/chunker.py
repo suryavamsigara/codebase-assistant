@@ -44,6 +44,8 @@ class CodeChunker:
                     else:
                         body = ""
 
+                    docstring = self._extract_docstring(node, code)
+
                     parent = node.parent
                     parent_class = None
 
@@ -58,6 +60,7 @@ class CodeChunker:
                     chunks.append({
                         'type': 'function',
                         'name': name,
+                        'docstring': docstring,
                         'code': body,
                         'start_line': node.start_point[0] + 1,
                         'end_line': node.end_point[0] + 1,
@@ -71,14 +74,42 @@ class CodeChunker:
                 if name_node:
                     name = code[name_node.start_byte:name_node.end_byte]
 
+                    docstring = self._extract_docstring(node, code)
+
+                    methods = []
+
+                    body_node = node.child_by_field_name('body')
+                    if body_node:
+                        for child in body_node.children:
+                            if child.type == 'funciton_definition':
+                                fn_name_node = child.child_by_field_name('name')
+                                if fn_name_node:
+                                    fn_name = code[fn_name_node.start_byte:fn_name_node.end_byte]
+                                methods.append(fn_name)
+
                     chunks.append({
                         'type': 'class',
                         'name': name,
+                        'docstring': docstring,
+                        'methods': methods,
                         'start_line': node.start_point[0] + 1,
                         'end_line': node.end_point[0] + 1,
                         'language': 'python',
                         'file_path': file_path,
-                        'code': 'code', # Change
-                        'parent_class': 'parent' # Change
                     })
         return chunks
+    
+    def _extract_docstring(self, node, code):
+        """Extract docstring from function or class node"""
+        body = node.child_by_field_name('body')
+        if not body:
+            return ""
+        
+        for child in body.children:
+            if child.type == 'expression_statement':
+                if child.children:
+                    first = child.children[0]
+                    if first.type == 'string':
+                        return code[first.start_byte:first.end_byte]
+                break
+        return ""

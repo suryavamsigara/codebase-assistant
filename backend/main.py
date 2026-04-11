@@ -33,7 +33,7 @@ def main():
     embedder.save("db")
     embedder.load("db")
     print("======================")
-    print(embedder.search("backward propagationfor matrix multiplication"))
+    print(embedder.search("backward propagation for matrix multiplication"))
     print("======================")
     print(embedder.search("to deposit money"))
     print("======================")

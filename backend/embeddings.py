@@ -20,9 +20,21 @@ class Embedder:
         if chunk.get('name'):
             header_parts.append(f"Name: {chunk['name']}")
         
+        if chunk.get('docstring'):
+            header_parts.append(f"Purpose: {chunk['docstring'][:200]}")
+
+        if chunk.get('parent_class'):
+            header_parts.append(f"Part of class: {chunk['parent_class']}")
+        
         header = " | ".join(header_parts)
 
-        return f"{header}\n---\n{chunk['code']}"
+        if chunk['type'] == 'class':
+            return f"""
+            This is a {chunk['language']} class named {chunk['name']},
+            It contains methods: {', '.join(chunk.get('methods', []))}
+            """
+        else:
+            return f"{header}\n---\n{chunk.get('code', '')}"
     
     def embed_chunks(self, chunks: List[Dict]):
         print("Embedding chunks")
@@ -66,7 +78,8 @@ class Embedder:
                 'start_line': chunk['start_line'],
                 'end_line': chunk['end_line'],
                 'file_path': chunk['file_path'],
-                'parent_class': chunk['parent_class']
+                'parent_class': chunk['parent_class'],
+                'docstring': chunk['docstring']
             })
 
             if len(results) >= k:
