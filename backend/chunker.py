@@ -81,11 +81,11 @@ class CodeChunker:
                     body_node = node.child_by_field_name('body')
                     if body_node:
                         for child in body_node.children:
-                            if child.type == 'funciton_definition':
+                            if child.type == 'function_definition':
                                 fn_name_node = child.child_by_field_name('name')
                                 if fn_name_node:
                                     fn_name = code[fn_name_node.start_byte:fn_name_node.end_byte]
-                                methods.append(fn_name)
+                                    methods.append(fn_name)
 
                     chunks.append({
                         'type': 'class',
