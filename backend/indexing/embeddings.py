@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 from sentence_transformers import SentenceTransformer
 import faiss
 from typing import List, Dict
@@ -36,9 +37,9 @@ class Embedder:
         else:
             return f"{header}\n---\n{chunk.get('code', '')}"
     
-    def embed_chunks(self, chunks: List[Dict]):
+    def embed_chunks(self):
         print("Embedding chunks")
-        texts_to_embed = [self.create_contextual_header(chunk) for chunk in chunks]
+        texts_to_embed = [self.create_contextual_header(chunk) for chunk in self.chunks]
         # print(texts_to_embed[:3])
         self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
         print("Embeds: ", self.embeddings.shape)
@@ -49,14 +50,17 @@ class Embedder:
         self.index = faiss.IndexFlatIP(dimension)
         self.index.add(self.embeddings)
 
-    def save(self, path: str):
+    def save(self, path):
         """Save index and metadata"""
         print("Saving index")
-        faiss.write_index(self.index, f"{path}/index.faiss")
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        faiss.write_index(self.index, str(path / "index.faiss"))
 
-    def load(self, path: str):
+    def load(self, path):
         print("Loading index")
-        self.index = faiss.read_index(f"{path}/index.faiss")
+        path = Path(path)
+        self.index = faiss.read_index(str(path / "index.faiss"))
     
     def search(self, query: str, k: int = 1):
         print("Searching query")
@@ -77,7 +81,6 @@ class Embedder:
                 'file_path': chunk['file_path'],
                 'start_line': chunk['start_line'],
                 'end_line': chunk['end_line'],
-                'file_path': chunk['file_path'],
                 'parent_class': chunk['parent_class'],
                 'docstring': chunk['docstring']
             })

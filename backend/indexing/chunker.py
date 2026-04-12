@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from tree_sitter import Language, Parser, Tree, Node
 import tree_sitter_python as tspython
 from typing import Generator, List
