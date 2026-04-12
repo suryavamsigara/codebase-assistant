@@ -1,6 +1,6 @@
-from walker import RepoWalker
-from chunker import CodeChunker
-from embeddings import Embedder
+from indexing.walker import RepoWalker
+from indexing.chunker import CodeChunker
+from indexing.embeddings import Embedder
 
 walker = RepoWalker("tmp/r1", "r1")
 chunker = CodeChunker()
