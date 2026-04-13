@@ -1,8 +1,11 @@
 import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+from transformers import logging
 import faiss
 from typing import List, Dict
+
+logging.set_verbosity_error()
 
 class Embedder:
     def __init__(self, model_name:str="BAAI/bge-small-en-v1.5", chunks: List[Dict]=None):

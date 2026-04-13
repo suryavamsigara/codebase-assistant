@@ -6,9 +6,28 @@ class RepoWalker:
         self.repo_path: Path = (self.cwd / repo_path).resolve()
         self.repo_name = Path(repo_name)
 
-        self.skip_dirs = {"venv", ".venv", ".env", "node_modules", "dist", ".git", "__pycache__"}
+        self.skip_dirs = {
+            "venv", ".venv", ".env", "node_modules", "dist", ".git",
+            "__pycache__", "build", ".next", ".cache", ".pytest_cache"
+        }
 
-        self.skip_files = {".env", "uv.lock"}
+        self.skip_files = {
+            ".env", "uv.lock", "yarn.lock", "package-lock.json"
+        }
+
+        self.extensions = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.ts': 'typescript',
+            '.java': 'java',
+            '.go': 'go',
+            '.rs': 'rust',
+            '.md': 'markdown',
+            '.toml': 'toml',
+            '.json': 'json',
+            '.yaml': 'yaml',
+            '.yml': 'yaml',
+        }
 
     def get_git_info(self):
         return ""
@@ -22,8 +41,6 @@ class RepoWalker:
             return
 
         for root, dirs, files in target_dir.walk(): # (Path, List[str], List[str])
-            # print(f"Root: {root}, dirs: {dirs}, files: {files}")
-
             dirs[:] = [d for d in dirs if d not in self.skip_dirs]
 
             for file in files:
@@ -31,8 +48,12 @@ class RepoWalker:
                     continue
 
                 file_path = root / file
-                if not file_path.suffix == ".py":
-                    continue
+                ext = file_path.suffix.lower()
+
+                if ext not in self.extensions:
+                    language = 'markdown'
+                else:
+                    language = self.extensions[ext]
                 
                 print(f"Yielding file : {file_path}")
 
@@ -40,5 +61,5 @@ class RepoWalker:
                     'file_path': str(file_path.relative_to(self.repo_path)),
                     'absolute_path': file_path,
                     'repo_name': self.repo_name,
-                    'language': 'Python',
-                } # language, git author, last modified
+                    'language': language,
+                } # git author, last modified

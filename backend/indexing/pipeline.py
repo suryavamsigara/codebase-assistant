@@ -23,9 +23,10 @@ class IndexingPipeline:
             with open(file_data['absolute_path'], 'r', encoding='utf-8', errors='ignore') as f:
                 code = f.read()
 
-            chunks = self.chunker.chunk_python(
-                code,
-                file_data['file_path'])
+            chunks = self.chunker.chunk_with_fallback(
+                code=code,
+                file_path=file_data['file_path'],
+            )
 
             for chunk in chunks:
                 chunk.update({
