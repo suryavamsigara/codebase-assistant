@@ -22,7 +22,7 @@ class HybridRetriever:
         
         return [(doc_id, score) for doc_id, score in sorted_docs]
 
-    def search(self, query: str, top_k: int = 5):
+    def search(self, query: str, top_k: int = 5) -> list[tuple[int, float]]:
         """
         Peforms hybrid search: vector + BM25
         """
@@ -45,7 +45,7 @@ class HybridRetriever:
         
         return fused_results[:top_k]
 
-    def vector_search(self, query: str, top_k: int = 5):
+    def vector_search(self, query: str, top_k: int = 5) -> list[tuple[int, float]]:
         query_embedding = self.vector_index.model.encode([query])
         faiss.normalize_L2(query_embedding)
 
@@ -58,7 +58,7 @@ class HybridRetriever:
         
         return results
     
-    def bm25_search(self, query: str, top_k: int = 5):
+    def bm25_search(self, query: str, top_k: int = 5) -> list[tuple[int, float]]:
         query_tokens = query.lower().split()
 
         scores = []

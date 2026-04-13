@@ -2,7 +2,7 @@ from pathlib import Path
 from tree_sitter import Language, Parser, Tree, Node
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
-from typing import Generator, List
+from typing import Generator
 
 class CodeChunker:
     def __init__(self):
@@ -19,7 +19,7 @@ class CodeChunker:
             ".jsx": "javascript",
         }
     
-    def _get_language_from_path(self, file_path: str):
+    def _get_language_from_path(self, file_path: str) -> str:
         """Detects language from file extension"""
         ext = Path(file_path).suffix.lower()
         return self.lang_map.get(ext, 'unknown')
@@ -52,7 +52,7 @@ class CodeChunker:
         else:
             return self._chunk_by_lines(code, file_path)
 
-    def chunk_python(self, code: str, file_path: str, language: str) -> List[dict]:
+    def chunk_python(self, code: str, file_path: str, language: str) -> list[dict]:
         parser = self.parsers["python"]
         tree = parser.parse(bytes(code, 'utf-8'))
 
@@ -125,7 +125,7 @@ class CodeChunker:
                     })
         return chunks
     
-    def chunk_javascript(self, code: str, file_path: str, language: str):
+    def chunk_javascript(self, code: str, file_path: str, language: str) -> list[dict]:
         parser = self.parsers["javascript"]
         tree = parser.parse(bytes(code, 'utf-8'))
 
@@ -235,7 +235,7 @@ class CodeChunker:
 
         return None
 
-    def _extract_docstring(self, node, code):
+    def _extract_docstring(self, node, code) -> str:
         """Extract docstring from function or class node"""
         body = node.child_by_field_name('body')
         if not body:
@@ -250,7 +250,7 @@ class CodeChunker:
                 break
         return ""
     
-    def _chunk_by_lines(self, code: str, file_path: str):
+    def _chunk_by_lines(self, code: str, file_path: str) -> list[dict]:
         """Fallback: Chunk by lines for unknown file types"""
 
         chunks = []

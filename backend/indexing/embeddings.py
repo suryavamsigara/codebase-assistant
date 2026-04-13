@@ -3,18 +3,17 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from transformers import logging
 import faiss
-from typing import List, Dict
 
 logging.set_verbosity_error()
 
 class Embedder:
-    def __init__(self, model_name:str="BAAI/bge-small-en-v1.5", chunks: List[Dict]=None):
+    def __init__(self, model_name:str="BAAI/bge-small-en-v1.5", chunks: list[dict]=None):
         self.embeddings = None
         self.index = None
         self.model = SentenceTransformer(model_name)
         self.chunks = chunks
 
-    def create_contextual_header(self, chunk: Dict) -> str:
+    def create_contextual_header(self, chunk: dict) -> str:
         header_parts = [
             f"Language: {chunk.get('language', 'unknown')}",
             f"File: {chunk.get('file_path', 'unknown')}",

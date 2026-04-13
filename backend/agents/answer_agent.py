@@ -15,7 +15,7 @@ class AnswerAgent:
             base_url="https://api.deepseek.com"
         )
 
-    def generate_answer(self, query: str, retrieved_chunks: list[dict]):
+    def generate_answer(self, query: str, retrieved_chunks: list[dict]) -> str:
         formatted_chunks = []
         for i, chunk in enumerate(retrieved_chunks):
             formatted_chunks.append(
