@@ -82,7 +82,8 @@ class Embedder:
                 'start_line': chunk['start_line'],
                 'end_line': chunk['end_line'],
                 'parent_class': chunk['parent_class'],
-                'docstring': chunk['docstring']
+                'docstring': chunk['docstring'],
+                'repo_name': chunk['repo_name'],
             })
 
             if len(results) >= k:

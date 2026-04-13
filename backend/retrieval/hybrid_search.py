@@ -22,7 +22,7 @@ class HybridRetriever:
         
         return [(doc_id, score) for doc_id, score in sorted_docs]
 
-    def search(self, query: str, top_k: int = 10):
+    def search(self, query: str, top_k: int = 5):
         """
         Peforms hybrid search: vector + BM25
         """
@@ -38,7 +38,12 @@ class HybridRetriever:
             if bm25_search_results:
                 ranked_lists.append(bm25_search_results)
         
-        return ranked_lists
+        if not ranked_lists:
+            return []
+        
+        fused_results = self.reciprocal_rank_fusion(ranked_lists)
+        
+        return fused_results[:top_k]
 
     def vector_search(self, query: str, top_k: int = 5):
         query_embedding = self.vector_index.model.encode([query])

@@ -12,11 +12,10 @@ class IndexingPipeline:
         self.walker = None
         self.chunker = CodeChunker()
         self.embedder = None
+        self.all_chunks = []
     
     def index_repo(self, repo_path: str, repo_name: str):
         self.walker = RepoWalker(repo_path, repo_name)
-
-        all_chunks = []
 
         for file_data in self.walker.walk():
             print(f"Processing: {file_data['file_path']}")
@@ -30,24 +29,14 @@ class IndexingPipeline:
 
             for chunk in chunks:
                 chunk.update({
-                    'repo_name': file_data['repo_name'],
-                    'full_file_path': file_data['file_path']
+                    'repo_name': str(file_data['repo_name']),
                 })
 
-            all_chunks.extend(chunks)
+            self.all_chunks.extend(chunks)
 
-            print(f"  Found {len(chunks)} chunks from this file. Total so far: {len(all_chunks)}")
+            print(f"  Found {len(chunks)} chunks from this file. Total so far: {len(self.all_chunks)}")
 
-        embedder = Embedder(chunks=all_chunks)
-        embedder.embed_chunks()
-        embedder.save(DB_PATH)
-        embedder.load(DB_PATH)
-
-        print("======================")
-        print(embedder.search("backward propagation for matrix multiplication"))
-        print("======================")
-        print(embedder.search("to deposit money"))
-        print("======================")
-        print(embedder.search("How to build computation order?"))
-        print("======================")
-        print(embedder.search("compute n factorial recursively"))
+        self.embedder = Embedder(chunks=self.all_chunks)
+        self.embedder.embed_chunks()
+        self.embedder.save(DB_PATH)
+        self.embedder.load(DB_PATH)
