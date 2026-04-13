@@ -13,3 +13,4 @@ tmp/
 tests/
 db/
 test.py
+.env

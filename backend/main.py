@@ -2,6 +2,7 @@ from pathlib import Path
 from indexing.pipeline import IndexingPipeline
 from retrieval.hybrid_search import HybridRetriever, BM25Index
 from agents.orchestrator import RAGOrchestrator
+from agents.answer_agent import AnswerAgent
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMP_REPO_PATH = BASE_DIR / "tmp" / "r1"
@@ -22,15 +23,17 @@ def main():
         bm25_index=bm25_index
     )
 
-    query = "compute n factorial recursively"
+    answer_agent = AnswerAgent()
 
     orchestrator = RAGOrchestrator(
         chunks=pipeline.all_chunks,
-        hybrid_retriever=hybrid_retriever
+        hybrid_retriever=hybrid_retriever,
+        answer_agent=answer_agent
     )
 
-    result = orchestrator.process_query(query)
-    print(result)
+    query = "How computation order was built?"
+    response = orchestrator.process_query(query)
+    print(response)
 
 if __name__ == "__main__":
     main()

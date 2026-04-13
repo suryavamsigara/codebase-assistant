@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "dotenv>=0.9.9",
     "faiss-cpu>=1.13.2",
+    "openai>=2.31.0",
     "sentence-transformers>=5.3.0",
     "tree-sitter>=0.25.2",
     "tree-sitter-python>=0.25.0",
