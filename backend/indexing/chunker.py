@@ -50,7 +50,7 @@ class CodeChunker:
             return self.chunk_javascript(code, file_path, "javascript")
         
         else:
-            return "" # chunk with sliding window
+            return self._chunk_by_lines(code, file_path)
 
     def chunk_python(self, code: str, file_path: str, language: str) -> List[dict]:
         parser = self.parsers["python"]
@@ -250,12 +250,26 @@ class CodeChunker:
                 break
         return ""
     
-    def chunk_with_fallback(self, code: str, file_path: str):
-        """Tries AST chunking, falls back to sliding window if it fails."""
-        try:
-            return self.chunk_file(code, file_path)
-        except Exception as e:
-            print(f"AST chunking failed for {file_path}: {e}")
+    def _chunk_by_lines(self, code: str, file_path: str):
+        """Fallback: Chunk by lines for unknown file types"""
+
+        chunks = []
+        lines = code.split('\n')
+        chunk_size = 50
+        overlap = 10
+
+        for i in range(0, len(lines), chunk_size-overlap):
+            chunk_lines = lines[i:i+chunk_size]
+            chunk_code = '\n'.join(chunk_lines)
+
+            chunks.append({
+                'type': 'code_block',
+                'name': f'lines_{i+1}_{i+len(chunk_lines)}',
+                'code': chunk_code,
+                'start_line': i + 1,
+                'end_line': i + len(chunk_lines),
+                'language': 'unknown',
+                'file_path': file_path
+            })
         
-        return []
-       # Implement sliding window chunking
+        return chunks
