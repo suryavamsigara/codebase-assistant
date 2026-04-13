@@ -12,7 +12,7 @@ class RepoWalker:
         }
 
         self.skip_files = {
-            ".env", "uv.lock", "yarn.lock", "package-lock.json"
+            ".env", "uv.lock", "yarn.lock", "package-lock.json", "README.md"
         }
 
         self.extensions = {

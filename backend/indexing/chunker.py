@@ -17,6 +17,7 @@ class CodeChunker:
             ".py": "python",
             ".js": "javascript",
             ".jsx": "javascript",
+            ".md": "markdown"
         }
     
     def _get_language_from_path(self, file_path: str) -> str:
