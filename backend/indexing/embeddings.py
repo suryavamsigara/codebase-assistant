@@ -83,8 +83,8 @@ class Embedder:
                 'file_path': chunk['file_path'],
                 'start_line': chunk['start_line'],
                 'end_line': chunk['end_line'],
-                'parent_class': chunk['parent_class'],
-                'docstring': chunk['docstring'],
+                'parent_class': chunk.get('parent_class'),
+                'docstring': chunk.get('docstring'),
                 'repo_name': chunk['repo_name'],
             })
 

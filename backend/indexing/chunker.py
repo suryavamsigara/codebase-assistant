@@ -148,7 +148,7 @@ class CodeChunker:
 
                 while parent:
                     if parent.type == 'class_declaration':
-                        class_name_node = parent.child_by_field_name('node')
+                        class_name_node = parent.child_by_field_name('name')
                         if class_name_node:
                             parent_class = code[class_name_node.start_byte:class_name_node.end_byte]
                         break
