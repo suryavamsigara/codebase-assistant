@@ -29,8 +29,8 @@ def clone_repo(github_url: str, repo_name: str) -> Path:
     return repo_path
 
 def main():
-    github_url = "https://github.com/suryavamsigara/tenxar"
-    repo_name = "tenxar"
+    github_url = "https://github.com/suryavamsigara/social-app"
+    repo_name = "social-app"
     repo_path = clone_repo(github_url, repo_name)
 
     pipeline = IndexingPipeline(model_name="BAAI/bge-small-en-v1.5")
@@ -55,9 +55,16 @@ def main():
         answer_agent=answer_agent
     )
 
-    query = "How backpropagation was implemented? and what neural network layers are there? how does forward pass work?"
-    response = orchestrator.process_query(query)
-    print(response)
+    # query = "How backpropagation was implemented? and what neural network layers are there? how does forward pass work?"
+
+    while True:
+        query = input("Enter: ")
+
+        if query == "stop":
+            break
+
+        response = orchestrator.process_query(query)
+        print(response)
 
 if __name__ == "__main__":
     main()

@@ -8,11 +8,12 @@ class RepoWalker:
 
         self.skip_dirs = {
             "venv", ".venv", ".env", "node_modules", "dist", ".git",
-            "__pycache__", "build", ".next", ".cache", ".pytest_cache"
+            "__pycache__", "build", ".next", ".cache", ".pytest_cache",
+            ".vscode", "public"
         }
 
         self.skip_files = {
-            ".env", "uv.lock", "yarn.lock", "package-lock.json", "README.md"
+            ".env", "uv.lock", "yarn.lock", "package-lock.json", "README.md", ".gitignore", 
         }
 
         self.extensions = {

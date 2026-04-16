@@ -6,7 +6,7 @@ class RAGOrchestrator:
     
     def process_query(self, query: str):
 
-        results = self.retriever.search(query, 6)
+        results = self.retriever.search(query, 10)
 
         retrieved_chunks = []
 

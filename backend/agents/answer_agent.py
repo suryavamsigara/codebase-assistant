@@ -28,7 +28,7 @@ class AnswerAgent:
 
                 Code:
                 ```{chunk.get('language', 'python')}
-                {chunk['code'][:1000]}
+                {chunk['code'][:1000] if chunk.get('code') else "no code in this chunk"}
                 ```
                 """
             )
