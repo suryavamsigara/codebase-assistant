@@ -9,24 +9,26 @@ class RAGOrchestrator:
     
     def process_query(self, query: str):
 
-        response = self.query_agent.rewrite_query(query)
-        print(f"============\nResponse: {response}\n============")
+        sub_queries = self.query_agent.rewrite_query(query) # list[str]
+        print(f"============\nResponse: {sub_queries}\n============")
 
         all_results = []
-        for i in range(len(response)):
-            results = self.retriever.search(response[i], 3)
+        for sub_query in sub_queries:
+            results = self.retriever.search(sub_query, 3)
             all_results.append(results)
         
         print("\nAppended results\n")
 
+        seen = set()
         retrieved_chunks = []
 
-        for i in range(len(all_results)):
-            for idx, score in all_results[i]:
-                print(f"Chunk: {idx}")
-                chunk = self.chunks[idx]
-                retrieved_chunks.append(chunk)
+        for results in all_results:
+            for idx, score in results:
+                if idx not in seen:
+                    seen.add(idx)
+                    retrieved_chunks.append(self.chunks[idx])
         
+        print(f"\nRetrieved {len(retrieved_chunks)} unique chunks")
         print("\n===================================")
         print(retrieved_chunks)
         print("\n===================================")

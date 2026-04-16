@@ -1,21 +1,10 @@
 import json
-import os
-from dotenv import load_dotenv
-from openai import OpenAI
-
-load_dotenv()
-
-API_KEY = os.getenv("DEEPSEEK_API_KEY")
-if not API_KEY:
-    raise EnvironmentError("DEEPSEEK_API_KEY not set.")
+from agents.deepseek import get_client
 
 class QueryAgent:
     """Rewrites user query into better search queries"""
     def __init__(self):
-        self.client = OpenAI(
-            api_key=API_KEY,
-            base_url="https://api.deepseek.com"
-        )
+        self.client = get_client()
 
     def rewrite_query(self, original_query: str) -> list[str]:
         """Generates 3 subqueries from the original query."""

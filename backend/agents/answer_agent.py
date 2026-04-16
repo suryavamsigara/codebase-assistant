@@ -1,19 +1,8 @@
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()
-
-API_KEY = os.getenv("DEEPSEEK_API_KEY")
-if not API_KEY:
-    raise EnvironmentError("DEEPSEEK_API_KEY not set.")
+from agents.deepseek import get_client
 
 class AnswerAgent:
     def __init__(self):
-        self.client = OpenAI(
-            api_key=API_KEY,
-            base_url="https://api.deepseek.com"
-        )
+        self.client = get_client()
 
     def generate_answer(self, query: str, retrieved_chunks: list[dict]) -> str:
         formatted_chunks = []
