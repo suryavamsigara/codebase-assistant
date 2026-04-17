@@ -6,7 +6,6 @@ from typing import Generator
 
 class CodeChunker:
     def __init__(self):
-        self.language = Language(tspython.language())
 
         self.parsers = {
             "python": Parser(Language(tspython.language())),
