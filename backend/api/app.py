@@ -1,84 +1,84 @@
-from fastapi import FastAPI, HTTPException
-from pathlib import Path
-import subprocess
+import uuid
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sentence_transformers import SentenceTransformer
 
 from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse
-from indexing.pipeline import IndexingPipeline
-from retrieval.hybrid_search import HybridRetriever, BM25Index
 from agents.orchestrator import RAGOrchestrator
-from agents.answer_agent import AnswerAgent
+from database import get_db, engine, Base
+from models import IndexTask, DocumentChunk
+from api.celery_worker import process_repo_task
+
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Codebase RAG API")
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-TEMP_DIR = BASE_DIR / "tmp"
-TEMP_DIR.mkdir(exist_ok=True)
+print("Loading Embedding Model...")
+embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
-orchestrators: dict[str, RAGOrchestrator] = {}
+# Initialize stateless orchestrator
+orchestrator = RAGOrchestrator(embedding_model=embedding_model)
 
-def clone_repo(github_url: str, repo_name: str) -> Path:
-    """Clone a Github repository to a temporary directory"""
-    repo_path = TEMP_DIR / repo_name
+@app.post("/index", status_code=202)
+def index_repo(req: IndexRequest, db: Session = Depends(get_db)):
+    task_id = str(uuid.uuid4())
 
-    if repo_path.exists():
-        print(f"Repo already exists at {repo_path}")
-        return repo_path
+    new_task = IndexTask(id=task_id, repo_name=req.repo_name, status="PENDING")
+    db.add(new_task)
+    db.commit()
+
+    process_repo_task.delay(task_id, req.github_url, req.repo_name)
+
+    return {
+        "task_id": task_id,
+        "repo_name": req.repo_name,
+        "message": "Indexing started in background."
+    }
+
+@app.get("/index/status/{task_id}")
+def check_index_status(task_id: str, db: Session = Depends(get_db)):
+    # task = db.query(IndexTask).filter(IndexTask.id == task_id).first()
+    task = db.execute(
+        select(IndexTask).where(IndexTask.id == task_id)
+    ).scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found.")
     
-    print(f"Cloning {github_url} to {repo_path}")
-    subprocess.run(
-        ["git", "clone", github_url, str(repo_path)],
-        check=True,
-        capture_output=True
-    )
-    print("Clone complete")
-    return repo_path
-
-@app.post("/index", response_model=IndexResponse)
-def index_repo(req: IndexRequest):
-    try:
-        repo_path = clone_repo(req.github_url, req.repo_name)
-
-        pipeline = IndexingPipeline(model_name="BAAI/bge-small-en-v1.5")
-        pipeline.index_repo(
-            repo_path=str(repo_path),
-            repo_name=req.repo_name
-        )
-
-        bm25_index = BM25Index(pipeline.all_chunks)
-        hybrid_retriever = HybridRetriever(
-            vector_index=pipeline.embedder,
-            bm25_index=bm25_index
-        )
-        answer_agent = AnswerAgent()
-        orchestrator = RAGOrchestrator(
-            chunks=pipeline.all_chunks,
-            hybrid_retriever=hybrid_retriever,
-            answer_agent=answer_agent
-        )
-
-        orchestrators[req.repo_name] = orchestrator
-
-        return IndexResponse(
-            repo_name=req.repo_name,
-            chunk_count=len(pipeline.all_chunks),
-            message="Indexed Successfully"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "task_id": task_id,
+        "status": task.status
+    }
 
 @app.post("/query", response_model=QueryResponse)
-def query_repo(req: QueryRequest):
-    orchestrator = orchestrators.get(req.repo_name)
-    
-    if not orchestrator:
+def query_repo(req: QueryRequest, db: Session = Depends(get_db)):
+
+    repo_exists = db.execute(
+        select(DocumentChunk.id).where(DocumentChunk.repo_name == req.repo_name)).first()
+
+    if not repo_exists:
         raise HTTPException(status_code=404, detail=f"Repo '{req.repo_name}' not indexed yet.")
     
-    answer = orchestrator.process_query(req.query)
+    try:
+        answer = orchestrator.process_query(
+            req.query,
+            repo_name=req.repo_name,
+            db=db
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+    
     return QueryResponse(
         answer=answer,
         repo_name=req.repo_name
     )
 
 @app.get("/repos")
-def list_repos():
-    return {"repos": list(orchestrators.keys())}
+def list_repos(db: Session = Depends(get_db)):
+    repos = db.execute(
+        select(IndexTask.repo_name).distinct()
+    ).scalars().all()
+
+    return {"repos": repos}

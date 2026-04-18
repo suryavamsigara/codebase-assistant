@@ -2,6 +2,22 @@ import math
 import faiss
 from collections import defaultdict
 
+k = 60
+
+def reciprocal_rank_fusion(ranked_lists: list[list[tuple[int, float]]]):
+    """Combines vector and bm25 search"""
+    # RR(d) = sum(1 / (1 + rank(d)))
+
+    rrf_scores = defaultdict(float)
+    
+    for ranked_list in ranked_lists:
+        for rank, (doc_id, _) in enumerate(ranked_list, start=1):
+            rrf_scores[doc_id] += 1.0 / (k + rank)
+    
+    sorted_docs = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    return [(doc_id, score) for doc_id, score in sorted_docs]
+
 class HybridRetriever:
     def __init__(self, vector_index, bm25_index=None):
         self.vector_index = vector_index
