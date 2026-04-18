@@ -49,12 +49,5 @@ class IndexingPipeline:
 
         self.embedder = Embedder(chunks=self.all_chunks)
         self.embedder.embed_chunks()
-        self.embedder.save(repo_db_path) # Saving index.faiss
-        # self.embedder.load(DB_PATH)
-
-        print("Saving BM25 index to disk...")
-        bm25_index = BM25Index(self.all_chunks)
-        with open(repo_db_path / "bm25.pkl", "wb") as f:
-            pickle.dump(bm25_index, f)
 
         print(f"Indexing complete. All data saved to {repo_db_path}")

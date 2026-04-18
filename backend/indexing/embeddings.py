@@ -52,6 +52,7 @@ class Embedder:
         self.index = faiss.IndexFlatIP(dimension)
         self.index.add(self.embeddings)
 
+    # will delete these later since I'm no longer using faiss
     def save(self, path):
         """Save index and metadata"""
         print("Saving index")

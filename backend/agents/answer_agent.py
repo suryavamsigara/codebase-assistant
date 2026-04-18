@@ -7,6 +7,9 @@ class AnswerAgent:
     def generate_answer(self, query: str, retrieved_chunks: list[dict]) -> str:
         formatted_chunks = []
         for i, chunk in enumerate(retrieved_chunks):
+            parent_str = f"Parent Class: {chunk['parent_class']}\n" if chunk.get('parent_class') else ""
+            doc_str = f"Docstring: {chunk['docstring']}\n" if chunk.get('docstring') else ""
+
             formatted_chunks.append(
                 f"""
                 [CHUNK {i}]
@@ -14,7 +17,7 @@ class AnswerAgent:
                 Lines: {chunk['start_line']}-{chunk['end_line']}
                 Type: {chunk.get('type', 'code')}
                 Name: {chunk.get('name', 'unknown')}
-
+                {parent_str}{doc_str}
                 Code:
                 ```{chunk.get('language', 'python')}
                 {chunk['code'][:1000] if chunk.get('code') else "no code in this chunk"}
