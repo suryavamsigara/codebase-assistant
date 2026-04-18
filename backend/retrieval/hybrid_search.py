@@ -18,6 +18,10 @@ def reciprocal_rank_fusion(ranked_lists: list[list[tuple[int, float]]]):
     
     return [(doc_id, score) for doc_id, score in sorted_docs]
 
+# ======================================================================
+# The following are not needed since I'm now using pgvector
+# ======================================================================
+
 class HybridRetriever:
     def __init__(self, vector_index, bm25_index=None):
         self.vector_index = vector_index

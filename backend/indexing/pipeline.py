@@ -1,10 +1,8 @@
 import json
-import pickle
 from pathlib import Path
 from indexing.walker import RepoWalker
 from indexing.chunker import CodeChunker
 from indexing.embeddings import Embedder
-from retrieval.hybrid_search import BM25Index
 
 BASE_DIR = Path(__file__).resolve().parent.parent # backend
 DB_PATH = BASE_DIR / "db"

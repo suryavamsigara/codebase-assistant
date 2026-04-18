@@ -1,4 +1,3 @@
-import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from transformers import logging
@@ -51,6 +50,8 @@ class Embedder:
         dimension = self.embeddings.shape[1]
         self.index = faiss.IndexFlatIP(dimension)
         self.index.add(self.embeddings)
+
+# ============================================================================================
 
     # will delete these later since I'm no longer using faiss
     def save(self, path):
