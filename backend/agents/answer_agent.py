@@ -37,6 +37,21 @@ class AnswerAgent:
         CRITICAL CITATION RULE:
         Whenever you reference a file or piece of code, you MUST use a markdown link citing the CHUNK_ID. 
         Format it exactly like this: [filename](#chunk-ID)
+
+        CRITICAL FORMATTING RULES:
+        You must structure your response strictly using this Markdown hierarchy:
+
+        1. HEADINGS: Use `### ` for all major sections.
+        2. LISTS: Use `- ` for bullets. Do not write dense paragraphs. Use bullet points heavily.
+        3. BOLDING: Use `**text**` to highlight key concepts at the start of bullets.
+
+        BAD EXAMPLE:
+        The linear layer forward pass computes output. Layer Initialization creates weight and bias.
+
+        GOOD EXAMPLE:
+        ### Gradient Flow
+        - **Layer Initialization:** The linear layer creates weight and bias as Tensor objects [nn/layers.py](#chunk-0).
+        - **Forward Pass:** The matrix multiplication is computed [nn/layers.py](#chunk-1).
         """
 
         USER_PROMPT = f"""

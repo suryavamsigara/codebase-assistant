@@ -20,12 +20,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCiteCli
       <div
         className={`max-w-[95%] md:max-w-[100%] rounded-2xl px-5 py-3.5 text-[0.95rem] leading-relaxed ${
           isUser
-            ? 'bg-gray-800 text-white shadow-sm' 
-            : 'bg-white dark:bg-[#1C1C1E] border border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200 shadow-sm'
+            ? 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-sm'
+            : 'bg-transparent dark:text-neutral-200 shadow-sm'
         }`}
       >
         <ReactMarkdown
           components={{
+            // --- TYPOGRAPHY OVERRIDES ---
+            h3: ({ node, ...props }) => (
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white/95 mt-8 mb-3 tracking-tight" {...props} />
+            ),
+            p: ({ node, ...props }) => (
+              <p className="mb-5 last:mb-0 leading-7" {...props} />
+            ),
+            ul: ({ node, ...props }) => (
+              <ul className="list-disc list-outside ml-6 mb-6 space-y-2 marker:text-gray-400 dark:marker:text-white/30" {...props} />
+            ),
+            li: ({ node, ...props }) => (
+              <li className="pl-1" {...props} />
+            ),
+            strong: ({ node, ...props }) => (
+              <strong className="font-semibold text-gray-900 dark:text-white" {...props} />
+            ),
+            code: ({ node, inline, ...props }: any) => 
+              inline ? (
+                <code className="font-mono text-[0.85em] px-1.5 py-0.5 bg-gray-100 dark:bg-white/10 rounded-md" {...props} />
+              ) : (
+                <code {...props} />
+              ),
+
             a: ({ node, href, children, ...props }) => {
               if (href && href.startsWith('#chunk-')) {
                 const chunkIndex = parseInt(href.replace('#chunk-', ''), 10);
