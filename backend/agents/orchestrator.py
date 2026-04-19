@@ -142,32 +142,13 @@ class RAGOrchestrator:
                     yield {"type": "token", "content": token}
                         
             else:
-                yield {"type": "status", "message": "Recalling context"}
+                yield {"type": "status", "message": "Generating response"}
                 print("Router Decision: Conversing using history...")
 
                 for token in self.answer_agent.stream_answer(query, [], history):
                     answer_text += token
                     yield {"type": "token", "content": token}
 
-            new_assistant_message = Message(
-                conversation_id=conversation_id,
-                role="assistant",
-                content=answer_text,
-                cited_chunks=retrieved_chunks
-            )
-
-            db.add(new_assistant_message)
-            db.commit()
-
-            yield {"type": "done"}
-
-            # return response, retrieved_chunks
-
-        except Exception as e:
-            print(f"Stream interrupted: {str(e)}")
-            yield {"type": "error", "message": "Connection lost or LLM failed."}
-
-        finally:
             if answer_text:
                 new_assistant_message = Message(
                     conversation_id=conversation_id,
@@ -175,7 +156,16 @@ class RAGOrchestrator:
                     content=answer_text,
                     cited_chunks=retrieved_chunks
                 )
+
                 db.add(new_assistant_message)
                 db.commit()
-            
+
+            # return response, retrieved_chunks
+
+        except Exception as e:
+            db.rollback()
+            print(f"Stream interrupted: {str(e)}")
+            yield {"type": "error", "message": "Connection lost or LLM failed."}
+
+        finally:
             yield {"type": "done"}

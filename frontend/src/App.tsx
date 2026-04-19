@@ -17,7 +17,7 @@ const AppLayout = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   
   const [activeRepo, setActiveRepo] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const urlMatch = location.pathname.match(/\/chat\/(.+)/);
   const activeConversationId = urlMatch ? urlMatch[1] : null;
@@ -37,6 +37,10 @@ const AppLayout = () => {
       const guestId = getOrCreateGuestSessionId();
       const history = await apiClient.getConversations(guestId);
       setConversations(history);
+
+      if (history.length > 0) {
+        setIsSidebarOpen(true);
+      }
     };
     initApp();
   }, []);
@@ -117,8 +121,17 @@ const AppLayout = () => {
       <div className="flex-1 min-w-0 relative z-10 flex">
         <AnimatePresence mode="wait">
           {!activeRepo && !activeConversationId ? (
-            <motion.div key="zero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 w-full">
-              <ZeroState onIndexComplete={(repoName) => setActiveRepo(repoName)} />
+            <motion.div key="zero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 w-full flex">
+              {/* Pass the new Layout and Auth props down to ZeroState */}
+              <ZeroState 
+                onIndexComplete={(repoName) => {
+                  setActiveRepo(repoName);
+                }}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                user={user}
+                onOpenAuth={() => navigate(`${location.pathname}?auth=login`)}
+              />
             </motion.div>
           ) : (
             <motion.div key="workspace" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 w-full flex">

@@ -53,6 +53,8 @@ class AnswerAgent:
         ### Gradient Flow
         - **Layer Initialization:** The linear layer creates weight and bias as Tensor objects [nn/layers.py](#chunk-0).
         - **Forward Pass:** The matrix multiplication is computed [nn/layers.py](#chunk-1).
+
+        If code chunks are not provided with the question, DO NOT cite.
         """
 
         messages = [
@@ -100,7 +102,7 @@ class AnswerAgent:
                 yield content
                 
 
-                
+
         # message = response.choices[0].message
 
         # if message.content:
