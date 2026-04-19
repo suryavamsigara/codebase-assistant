@@ -1,4 +1,5 @@
 import type { 
+  User,
   IndexRequest, 
   IndexResponse, 
   StatusResponse, 
@@ -7,7 +8,7 @@ import type {
   NormalizedQueryResponse,
   AuthResponse,
   Message,
-  Conversation
+  Conversation,
 } from './types';
 import { getCookie } from './utils/session';
 
@@ -25,6 +26,14 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 };
 
 export const apiClient = {
+  async getMe(): Promise<User> {
+    const res = await fetchWithAuth(`${API_BASE}/users/me`);
+    if (!res.ok) {
+      throw new Error('Not authenticated');
+    }
+    return res.json();
+  },
+
   async register(name: string, email: string, password: string): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',

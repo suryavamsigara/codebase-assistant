@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from contextlib import asynccontextmanager
 from sentence_transformers import SentenceTransformer
 
 from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse, UserCreate, ConversationOut, MessageOut
@@ -18,10 +19,18 @@ from api.celery_worker import process_repo_task
 BASE_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = BASE_DIR / "tmp"
 
-# Create the database tables
-Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Connecting to database...")
 
-app = FastAPI(title="Codebase RAG API")
+    # Create the database tables
+    Base.metadata.create_all(bind=engine)
+
+    yield
+
+    print("Shutting down...")
+
+app = FastAPI(title="Codebase RAG API", lifespan=lifespan)
 
 origins = [
     "http://localhost:5173",
@@ -41,6 +50,7 @@ embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
 # Initialize stateless orchestrator
 orchestrator = RAGOrchestrator(embedding_model=embedding_model)
+
 
 @app.post("/index", status_code=202)
 def index_repo(req: IndexRequest, db: Session = Depends(get_db)):
@@ -250,3 +260,11 @@ def get_messages(
     ).scalars().all()
 
     return messages
+
+@app.get("/users/me")
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "name": current_user.name,
+        "email": current_user.email
+    }
+
