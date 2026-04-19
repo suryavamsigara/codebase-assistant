@@ -2,14 +2,16 @@ import uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sentence_transformers import SentenceTransformer
 
-from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse
+from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse, UserCreate
+from api.auth import get_password_hash, verify_password, get_current_user, create_access_token
 from agents.orchestrator import RAGOrchestrator
 from database import get_db, engine, Base
-from models import IndexTask, DocumentChunk
+from models import IndexTask, DocumentChunk, User
 from api.celery_worker import process_repo_task
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -91,7 +93,12 @@ def check_index_status(task_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/query", response_model=QueryResponse)
-def query_repo(req: QueryRequest, db: Session = Depends(get_db)):
+def query_repo(
+    req: QueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = current_user.id if current_user else None
 
     repo_exists = db.execute(
         select(DocumentChunk.id).where(DocumentChunk.repo_name == req.repo_name)).first()
@@ -103,7 +110,10 @@ def query_repo(req: QueryRequest, db: Session = Depends(get_db)):
         answer, cited_chunks = orchestrator.process_query(
             req.query,
             repo_name=req.repo_name,
-            db=db
+            db=db,
+            conversation_id=req.conversation_id,
+            guest_session_id=req.guest_session_id,
+            user_id=user_id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
@@ -145,3 +155,42 @@ def get_full_file(repo_name: str, file_path: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not read file: {str(e)}")
+    
+@app.post("/auth/register")
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.execute(
+        select(User).where(User.email == user.email)
+    ).scalar_one_or_none()
+
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = User(name=user.name, email=user.email, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # Auto login after registration
+    access_token = create_access_token(data={"sub": new_user.id})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "name": new_user.name,
+            "email": new_user.email
+        }
+    }
+
+@app.post("/auth/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.execute(
+        select(User).where(User.email == form_data.username)
+    ).scalar_one_or_none()
+
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    
+    access_token = create_access_token(data={"sub": user.id})
+    return {"access_token": access_token, "token_type": "bearer"}

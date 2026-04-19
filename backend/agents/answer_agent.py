@@ -4,7 +4,7 @@ class AnswerAgent:
     def __init__(self):
         self.client = get_client()
 
-    def generate_answer(self, query: str, retrieved_chunks: list[dict]) -> str:
+    def generate_answer(self, query: str, retrieved_chunks: list[dict], history: list) -> str:
         formatted_chunks = []
         for i, chunk in enumerate(retrieved_chunks):
             parent_str = f"Parent Class: {chunk['parent_class']}\n" if chunk.get('parent_class') else ""
@@ -26,7 +26,7 @@ class AnswerAgent:
             )
         
         SYSTEM_PROMPT = """
-        You are a codebase assistant. Answer the user's question using ONLY the code chunks provided.
+        You are a codebase assistant. Answer the user's question using the code chunks provided and conversation history.
 
         RULES:
         - If a chunk shows a function, explain what it does
@@ -54,26 +54,38 @@ class AnswerAgent:
         - **Forward Pass:** The matrix multiplication is computed [nn/layers.py](#chunk-1).
         """
 
-        USER_PROMPT = f"""
-        User question:
-        {query}
-
-        Retrieved code chunks:
-        {''.join(formatted_chunks)}
-        """
-
         messages = [
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT
-            },
-            {
-                "role": "user",
-                "content": USER_PROMPT
             }
         ]
 
-        print("Querying LLM")
+        for msg in history:
+            messages.append({
+                "role": msg.role,
+                "content": msg.content
+            })
+
+        if retrieved_chunks:
+            USER_PROMPT = f"""
+            User question:
+            {query}
+
+            Retrieved code chunks:
+            {''.join(formatted_chunks)}
+            """
+        
+        else:
+            USER_PROMPT = query
+        
+        messages.append({
+            "role": "user",
+            "content": USER_PROMPT
+        })
+
+        print(f"Querying LLM (History Length: {len(history)} messages)")
+        
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,

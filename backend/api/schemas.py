@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional
 
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+
 class IndexRequest(BaseModel):
     github_url: str
     repo_name: str
@@ -13,6 +18,8 @@ class IndexResponse(BaseModel):
 class QueryRequest(BaseModel):
     query: str
     repo_name: str
+    conversation_id: str
+    guest_session_id: Optional[str] = None
 
 class CitedChunk(BaseModel):
     file_path: str
