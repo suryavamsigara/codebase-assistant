@@ -35,3 +35,24 @@ class QueryRouter:
 
         result = json.loads(response.choices[0].message.content)
         return result.get("decision", "retrieve")
+    
+    def generate_title(self, first_query: str) -> str:
+        """Generates a 4-5 word title for a new conversation."""
+
+        system_prompt = "You are a title generator. Create a brief, 4-5 word summary title for a conversation starting with the user's message. Return ONLY the title string, no quotes, no extra text."
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": first_query}
+                ],
+                temperature=0.3
+            )
+            title = response.choices[0].message.content.strip()
+
+            return title.strip('"').strip("'")
+        except Exception as e:
+            return "New Conversation"
+        

@@ -29,15 +29,17 @@ class RAGOrchestrator:
         ).scalar_one_or_none()
 
         if not conv:
+            chat_title = self.router.generate_title(query)
+
             new_conv = Conversation(
                 id=conversation_id,
+                name=chat_title,
                 user_id=user_id,
                 guest_session_id=guest_session_id,
                 repo_name=repo_name
             )
             db.add(new_conv)
             db.flush()
-            # db.commit()
         
         history = db.execute(
             select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
@@ -46,7 +48,6 @@ class RAGOrchestrator:
         new_user_message = Message(conversation_id=conversation_id, role="user", content=query)
         db.add(new_user_message)
         db.flush()
-        # db.commit()
 
         decision = self.router.decide(query, history)
 

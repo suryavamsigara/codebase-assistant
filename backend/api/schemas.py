@@ -38,6 +38,7 @@ class QueryResponse(BaseModel):
 
 class ConversationOut(BaseModel):
     id: str
+    name: str
     repo_name: str
     created_at: datetime
     

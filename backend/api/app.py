@@ -62,6 +62,7 @@ def index_repo(req: IndexRequest, db: Session = Depends(get_db)):
     ).scalars().first()
 
     if existing_task:
+        print(existing_task.status)
         if existing_task.status == "COMPLETED":
             return {
                 "task_id": existing_task.id,
@@ -80,6 +81,8 @@ def index_repo(req: IndexRequest, db: Session = Depends(get_db)):
     new_task = IndexTask(id=task_id, repo_name=req.repo_name, status="PENDING")
     db.add(new_task)
     db.commit()
+
+    print(req.github_url)
 
     process_repo_task.delay(task_id, req.github_url, req.repo_name)
 

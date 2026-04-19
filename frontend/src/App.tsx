@@ -9,7 +9,6 @@ import { apiClient } from './api';
 import type { User, Conversation } from './types';
 import { setCookie, removeCookie, getCookie, getOrCreateGuestSessionId } from './utils/session';
 
-// We extract the main logic into a sub-component so we can use React Router hooks (useNavigate, useParams)
 const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,26 +18,22 @@ const AppLayout = () => {
   
   const [activeRepo, setActiveRepo] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Extract the conversation ID from the URL (e.g., /chat/12345 -> '12345')
   const urlMatch = location.pathname.match(/\/chat\/(.+)/);
   const activeConversationId = urlMatch ? urlMatch[1] : null;
 
-  // 1. Initial Load & Auth Check
   useEffect(() => {
     const initApp = async () => {
       const token = getCookie('access_token');
       if (token) {
         try {
-          const userData = await apiClient.getMe(); // Fetch real name from backend
+          const userData = await apiClient.getMe(); 
           setUser(userData);
         } catch {
           removeCookie('access_token');
         }
       }
 
-      // Fetch sidebar history based on user/guest
       const guestId = getOrCreateGuestSessionId();
       const history = await apiClient.getConversations(guestId);
       setConversations(history);
@@ -46,7 +41,6 @@ const AppLayout = () => {
     initApp();
   }, []);
 
-  // 2. Sync activeRepo when the URL changes
   useEffect(() => {
     if (activeConversationId) {
       const conv = conversations.find(c => c.id === activeConversationId);
@@ -56,12 +50,10 @@ const AppLayout = () => {
     }
   }, [activeConversationId, conversations]);
 
-  // Auth Handlers
   const handleAuthSuccess = async (userData: User, token: string) => {
     setUser(userData);
     setCookie('access_token', token, 30);
     
-    // Re-fetch conversations for the newly logged-in user
     const guestId = getOrCreateGuestSessionId();
     const history = await apiClient.getConversations(guestId);
     setConversations(history);
@@ -69,13 +61,12 @@ const AppLayout = () => {
 
   const handleLogout = () => {
     setUser(null);
-    setConversations([]); // Purge history from UI immediately
+    setConversations([]);
     removeCookie('access_token');
     setActiveRepo(null);
-    navigate('/'); // Kick them back to the home screen
+    navigate('/'); 
   };
 
-  // Chat Handlers
   const handleNewChat = () => {
     setActiveRepo(null); 
     navigate('/'); 
@@ -87,16 +78,16 @@ const AppLayout = () => {
       id: convId,
       repo_name: activeRepo,
       created_at: new Date().toISOString(),
-      preview_text: previewText
+      preview_text: previewText,
+      name: previewText.split(' ').slice(0, 5).join(' ') + (previewText.split(' ').length > 5 ? '...' : '')
     };
     setConversations(prev => [newConv, ...prev]);
-    navigate(`/chat/${convId}`); // Change the URL dynamically
+    navigate(`/chat/${convId}`); 
   };
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFAFA] dark:bg-[#0A0A0A] font-sans text-neutral-900 dark:text-neutral-100 selection:bg-blue-200 dark:selection:bg-blue-900">
       
-      {/* Persistent Left Sidebar */}
       <AnimatePresence initial={false}>
         {isSidebarOpen && (
           <motion.div
@@ -112,27 +103,22 @@ const AppLayout = () => {
               conversations={conversations}
               onSelectConversation={(conv) => {
                 setActiveRepo(conv.repo_name);
-                navigate(`/chat/${conv.id}`); // Route via React Router
+                navigate(`/chat/${conv.id}`); 
               }}
               onNewChat={handleNewChat}
-              onOpenAuth={() => setIsAuthModalOpen(true)}
+              // OPEN AUTH MODAL VIA URL
+              onOpenAuth={() => navigate(`${location.pathname}?auth=login`)}
               onLogout={handleLogout}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Routing Area */}
       <div className="flex-1 min-w-0 relative z-10 flex">
         <AnimatePresence mode="wait">
           {!activeRepo && !activeConversationId ? (
             <motion.div key="zero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 w-full">
-              <ZeroState 
-                onIndexComplete={(repoName) => {
-                  setActiveRepo(repoName);
-                  // Stay on '/' until they send the first message, which triggers onConversationStarted
-                }} 
-              />
+              <ZeroState onIndexComplete={(repoName) => setActiveRepo(repoName)} />
             </motion.div>
           ) : (
             <motion.div key="workspace" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 w-full flex">
@@ -148,11 +134,9 @@ const AppLayout = () => {
         </AnimatePresence>
       </div>
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-      />
+      {/* AuthModal handles its own open/close state based on the URL now */}
+      <AuthModal onSuccess={handleAuthSuccess} />
+      
     </div>
   );
 };

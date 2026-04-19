@@ -29,28 +29,50 @@ export const ZeroState: React.FC<ZeroStateProps> = ({ onIndexComplete }) => {
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('Starting task...');
 
-  const extractRepoName = (githubUrl: string) => {
+  const extractRepoData = (input: string) => {
+    let cleanUrl = input.trim();
+    
+    // 1. Handle raw "user/repo" shorthand
+    if (!cleanUrl.startsWith('http') && !cleanUrl.includes('github.com')) {
+      const parts = cleanUrl.split('/').filter(Boolean);
+      if (parts.length === 2) {
+        const owner = parts[0];
+        const repo = parts[1].replace('.git', '');
+        return { 
+          repoName: `${owner}_${repo}`, 
+          fullUrl: `https://github.com/${owner}/${repo}` 
+        };
+      }
+    }
+
+    // 2. Handle missing "https://" (e.g., github.com/user/repo)
+    if (!cleanUrl.startsWith('http')) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    // 3. Standard parsing for valid URLs
     try {
-      const parsed = new URL(githubUrl);
+      const parsed = new URL(cleanUrl);
       const parts = parsed.pathname.split('/').filter(Boolean);
       if (parts.length >= 2) {
         const owner = parts[parts.length - 2];
         const repo = parts[parts.length - 1].replace('.git', '');
-        return `${owner}_${repo}`;
+        
+        return { repoName: `${owner}_${repo}`, fullUrl: cleanUrl }; 
       }
-      return null;
     } catch {
       return null;
     }
+    
+    return null;
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); 
     if (!url.trim() || isIndexing) return;
     
-    const repoName = extractRepoName(url);
-    if (!repoName) {
-      setError("Invalid GitHub URL format.");
+    const parsedData = extractRepoData(url);
+    if (!parsedData) {
+      setError("Invalid format. Use a full GitHub URL or 'user/repo'.");
       return;
     }
 
@@ -59,12 +81,15 @@ export const ZeroState: React.FC<ZeroStateProps> = ({ onIndexComplete }) => {
     setStatusText('Contacting orchestrator...');
 
     try {
-      const response = await apiClient.indexRepository({ github_url: url, repo_name: repoName });
+      const response = await apiClient.indexRepository({ 
+        github_url: parsedData.fullUrl, 
+        repo_name: parsedData.repoName 
+      });
       
       // Fast-track transition if the database already has it COMPLETED
       if (response.message === "Repo is already indexed.") {
         setIsIndexing(false);
-        onIndexComplete(repoName);
+        onIndexComplete(parsedData.repoName); // <-- Fixed here
         return;
       }
 
@@ -85,7 +110,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({ onIndexComplete }) => {
           } else if (status === 'SUCCESS' || status === 'COMPLETED') {
             clearInterval(pollInterval);
             setIsIndexing(false);
-            onIndexComplete(repoName);
+            onIndexComplete(parsedData.repoName); // <-- Fixed here
           } else if (status === 'FAILED' || status === 'FAILURE') {
             clearInterval(pollInterval);
             setIsIndexing(false);

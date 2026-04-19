@@ -17,6 +17,7 @@ class User(Base):
 class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(String, primary_key=True)
+    name = Column(String, default="New Conversation")
     user_id = Column(String, ForeignKey("users.id"), nullable=True) # null if guest
     guest_session_id = Column(String, index=True, nullable=True) # Local storage ID
     repo_name = Column(String, index=True)

@@ -1,21 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { apiClient } from '../api';
 import type { User } from '../types';
 
 interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   onSuccess: (user: User, token: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
+export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Read auth state from the URL
+  const queryParams = new URLSearchParams(location.search);
+  const authType = queryParams.get('auth'); // 'login' | 'register' | null
+  
+  const isOpen = authType === 'login' || authType === 'register';
+  const isLogin = authType !== 'register'; // Default to login if not explicitly 'register'
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+
+  // Clear errors when toggling modes
+  useEffect(() => {
+    setError(null);
+  }, [authType]);
+
+  const handleClose = () => {
+    // Strip the ?auth= param to close the modal while staying on the current page
+    navigate(location.pathname);
+  };
+
+  const handleToggleMode = () => {
+    const newMode = isLogin ? 'register' : 'login';
+    navigate(`${location.pathname}?auth=${newMode}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +47,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     try {
       if (isLogin) {
         const res = await apiClient.login(formData.email, formData.password);
-        // Note: You might need a /users/me endpoint to fetch the name after login, 
-        // but we'll mock the User object here for immediate UI feedback.
         onSuccess({ name: formData.email.split('@')[0], email: formData.email }, res.access_token);
       } else {
         const res = await apiClient.register(formData.name, formData.email, formData.password);
         onSuccess(res.user!, res.access_token);
       }
-      onClose();
+      handleClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -49,7 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0"
-            onClick={onClose}
+            onClick={handleClose}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -59,7 +79,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             className="relative w-full max-w-sm p-8 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl border border-black/5 dark:border-white/10 rounded-[2rem] shadow-2xl"
           >
             <button 
-              onClick={onClose}
+              onClick={handleClose}
               className="absolute top-4 right-4 p-1.5 text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/10"
             >
               <X className="w-4 h-4" />
@@ -121,7 +141,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <div className="mt-6 text-center">
               <button
                 type="button"
-                onClick={() => { setIsLogin(!isLogin); setError(null); }}
+                onClick={handleToggleMode}
                 className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300 transition-colors"
               >
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}

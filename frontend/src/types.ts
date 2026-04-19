@@ -34,6 +34,7 @@ export interface Conversation {
   repo_name: string;
   created_at: string;
   preview_text?: string; // show the first message in the sidebar
+  name: string;
 }
 
 export interface IndexRequest {
