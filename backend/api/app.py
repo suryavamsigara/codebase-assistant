@@ -1,9 +1,11 @@
 import uuid
+import json
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from contextlib import asynccontextmanager
@@ -137,6 +139,36 @@ def query_repo(
         repo_name=req.repo_name,
         cited_chunks=cited_chunks
     )
+
+@app.post("/query/stream", response_model=QueryResponse)
+def query_repo(
+    req: QueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_id = current_user.id if current_user else None
+
+    repo_exists = db.execute(
+        select(DocumentChunk.id).where(DocumentChunk.repo_name == req.repo_name)).first()
+
+    if not repo_exists:
+        raise HTTPException(status_code=404, detail=f"Repo '{req.repo_name}' not indexed yet.")
+    
+    def event_generator():
+        try:
+            for event in orchestrator.process_query(
+                req.query,
+                repo_name=req.repo_name,
+                db=db,
+                conversation_id=req.conversation_id,
+                guest_session_id=req.guest_session_id,
+                user_id=user_id
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/repos")
 def list_repos(db: Session = Depends(get_db)):

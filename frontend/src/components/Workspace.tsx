@@ -6,7 +6,9 @@ import { MessageBubble } from './MessageBubble';
 import { CodeDrawer } from './CodeDrawer';
 import { apiClient } from '../api';
 import type { Message, Chunk } from '../types';
-import { generateId, getOrCreateGuestSessionId } from '../utils/session';
+import { generateId, getOrCreateGuestSessionId, getCookie } from '../utils/session';
+
+const API_BASE = 'http://localhost:8000';
 
 interface WorkspaceProps {
   repoName: string;
@@ -21,14 +23,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  
+  // Streaming & Loading States
   const [isTyping, setIsTyping] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  
   const [activeChunk, setActiveChunk] = useState<Chunk | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load messages when conversationId changes
   useEffect(() => {
     if (conversationId) {
       apiClient.getMessages(conversationId).then(history => {
@@ -39,67 +44,133 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         }
       });
     } else {
-      // New Chat scenario
       setMessages([{ id: 'init', role: 'ai', content: `Successfully connected to \`${repoName}\`. What would you like to know?` }]);
     }
   }, [conversationId, repoName]);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isTyping, statusMessage]);
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
     
     const userText = input.trim();
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: userText };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsgId = Date.now().toString();
+    const aiMsgId = (Date.now() + 1).toString();
+    
+    const userMsg: Message = { id: userMsgId, role: 'user', content: userText };
+    // Pre-inject the AI message so we can stream tokens into it
+    const aiMsg: Message = { id: aiMsgId, role: 'ai', content: '' };
+    
+    setMessages(prev => [...prev, userMsg, aiMsg]);
     setInput('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    setIsTyping(true);
     
-    // Crucial: Determine the ID. If it's a new chat, generate one now.
+    setIsTyping(true);
+    setStatusMessage("Initializing...");
+    
     const currentConvId = conversationId || generateId();
     const guestId = getOrCreateGuestSessionId();
+    const token = getCookie('access_token');
+
+    if (!conversationId) {
+      onConversationStarted(currentConvId, userText);
+    }
 
     try {
-      const response = await apiClient.queryRepository({ 
-        query: userText, 
-        repo_name: repoName,
-        conversation_id: currentConvId,
-        guest_session_id: guestId
+      const response = await fetch(`${API_BASE}/query/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          query: userText,
+          repo_name: repoName,
+          conversation_id: currentConvId,
+          guest_session_id: guestId
+        })
       });
-      
-      const aiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
-        role: 'ai', 
-        content: response.answer,
-        chunks: response.chunks 
-      };
-      
-      setMessages(prev => [...prev, aiMsg]);
 
-      // If this was a new chat, notify the parent (App.tsx) to update the sidebar
-      if (!conversationId) {
-        onConversationStarted(currentConvId, userText);
+      if (!response.body) throw new Error("No readable stream");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let buffer = '';
+      let currentContent = '';
+      let currentChunks: Chunk[] = [];
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        // Decode and append to buffer to ensure we don't slice JSON mid-string
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        
+        // Keep the last incomplete part in the buffer for the next chunk
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          if (part.startsWith('data: ')) {
+            const jsonStr = part.replace(/^data:\s*/, '');
+            if (!jsonStr.trim() || jsonStr === '[DONE]') continue;
+
+            try {
+              const data = JSON.parse(jsonStr);
+
+              if (data.type === 'status') {
+                setStatusMessage(data.message);
+              } 
+              else if (data.type === 'citations') {
+                // Map the cited chunks and assign an ID based on array index
+                currentChunks = (data.chunks || []).map((c: any, i: number) => ({ ...c, id: i }));
+                
+                // Attach chunks to the AI message
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMsgId ? { ...m, chunks: currentChunks } : m
+                ));
+
+                // UX Requirement: Instantly pop open the drawer for the first citation
+                if (currentChunks.length > 0) {
+                  setActiveChunk(currentChunks[0]);
+                  setIsDrawerOpen(true);
+                }
+              } 
+              else if (data.type === 'token') {
+                currentContent += data.content;
+                // Append token to create the typewriter effect
+                setMessages(prev => prev.map(m => 
+                  m.id === aiMsgId ? { ...m, content: currentContent } : m
+                ));
+              } 
+              else if (data.type === 'done') {
+                setStatusMessage(null);
+                setIsTyping(false);
+              }
+            } catch (e) {
+              console.error("Stream parse error:", e, "Raw string:", jsonStr);
+            }
+          }
+        }
       }
-
     } catch (error) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'ai', content: "**Error:** Failed to reach RAG API." }]);
+      console.error(error);
+      setMessages(prev => prev.map(m => 
+        m.id === aiMsgId ? { ...m, content: "**Error:** Stream disconnected." } : m
+      ));
     } finally {
       setIsTyping(false);
+      setStatusMessage(null);
     }
   };
 
   return (
-    // RESTORED: Horizontal flex container for the entire workspace
     <div className="flex flex-1 w-full h-full overflow-hidden bg-[#FAFAFA] dark:bg-[#0A0A0A]">
-      
-      {/* LEFT PANE: Main Chat Area */}
-      {/* flex-1 allows this to shrink when the drawer opens */}
       <div className="flex flex-col flex-1 min-w-0 relative z-10">
         
-        {/* Header */}
         <header className="flex items-center justify-between h-14 px-4 border-b border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#0A0A0A]/70 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button onClick={onToggleSidebar} className="p-1.5 text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors rounded-lg hover:bg-black/5 dark:hover:bg-white/10">
@@ -117,19 +188,51 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           </button>
         </header>
 
-        {/* Main Chat Feed */}
         <main className="flex-1 overflow-y-auto px-6 pt-8 pb-32 scrollbar-thin">
           <div className="max-w-3xl mx-auto">
-            {messages.map(msg => (
-              <MessageBubble key={msg.id} message={msg} onCiteClick={(chunk) => { setActiveChunk(chunk); setIsDrawerOpen(true); }} />
-            ))}
-            {isTyping && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex w-full mb-6">
-                <div className="bg-white dark:bg-[#1C1C1E] border border-neutral-200 dark:border-neutral-800 rounded-2xl px-4 py-3 flex gap-2 shadow-sm">
-                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                </div>
-              </motion.div>
-            )}
+            {messages.map(msg => {
+              // Hide the pre-injected AI bubble if it hasn't received any tokens or chunks yet
+              if (msg.role === 'ai' && !msg.content && (!msg.chunks || msg.chunks.length === 0)) return null;
+              
+              return (
+                <MessageBubble 
+                  key={msg.id} 
+                  message={msg} 
+                  onCiteClick={(chunk) => { setActiveChunk(chunk); setIsDrawerOpen(true); }} 
+                />
+              );
+            })}
+            
+            {/* The Animated Status Pill */}
+            <AnimatePresence>
+              {statusMessage && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} 
+                  className="flex w-full mb-6"
+                >
+                  <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-2xl px-4 py-2.5 shadow-sm flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                    
+                    {/* Mode="wait" allows the previous text to exit before the new text enters */}
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={statusMessage}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-xs font-medium text-neutral-600 dark:text-neutral-300 tracking-wide"
+                      >
+                        {statusMessage}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div ref={endOfMessagesRef} />
           </div>
         </main>
@@ -159,8 +262,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         </div>
       </div>
 
-      {/* RIGHT PANE: Sliding Code Drawer */}
-      {/* flex-shrink-0 ensures it doesn't get crushed by the chat container */}
+      {/* Code Drawer Panel */}
       <AnimatePresence initial={false}>
         {isDrawerOpen && activeChunk && (
           <motion.div 

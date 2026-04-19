@@ -1,10 +1,11 @@
 from agents.deepseek import get_client
+from typing import Generator
 
 class AnswerAgent:
     def __init__(self):
         self.client = get_client()
 
-    def generate_answer(self, query: str, retrieved_chunks: list[dict], history: list) -> str:
+    def stream_answer(self, query: str, retrieved_chunks: list[dict], history: list) -> Generator:
         formatted_chunks = []
         for i, chunk in enumerate(retrieved_chunks):
             parent_str = f"Parent Class: {chunk['parent_class']}\n" if chunk.get('parent_class') else ""
@@ -89,11 +90,19 @@ class AnswerAgent:
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,
-            temperature=0.3
+            temperature=0.3,
+            stream=True
         )
 
-        message = response.choices[0].message
+        for chunk in response:
+            content = chunk.choices[0].delta.content
+            if content is not None:
+                yield content
+                
 
-        if message.content:
-            return message.content
-        return ""
+                
+        # message = response.choices[0].message
+
+        # if message.content:
+        #     return message.content
+        # return ""
