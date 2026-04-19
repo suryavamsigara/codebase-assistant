@@ -37,15 +37,8 @@ class IndexingPipeline:
             self.all_chunks.extend(chunks)
 
             print(f"  Found {len(chunks)} chunks from this file. Total so far: {len(self.all_chunks)}")
-        
-        repo_db_path = DB_PATH / repo_name
-        repo_db_path.mkdir(parents=True, exist_ok=True)
-
-        print("Saving chunks to disk...")
-        with open(repo_db_path / "chunks.json", "w", encoding="utf-8") as f:
-            json.dump(self.all_chunks, f)
 
         self.embedder = Embedder(chunks=self.all_chunks)
         self.embedder.embed_chunks()
 
-        print(f"Indexing complete. All data saved to {repo_db_path}")
+        print(f"Indexing complete.")

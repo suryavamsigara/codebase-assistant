@@ -84,6 +84,5 @@ class RAGOrchestrator:
             print(f"File: {c['file_path']} | Lines: {c['start_line']}-{c['end_line']}")
         print("===================================\n")
         
-        # 4. Generate the final answer
         response = self.answer_agent.generate_answer(query, retrieved_chunks)
-        return response
+        return response, retrieved_chunks

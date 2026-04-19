@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Define the width of the scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px; /* For vertical scrollbars */
+    height: 6px; /* For horizontal scrollbars */
+  }
+
+  /* Style the draggable handle (thumb) */
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #3f3f46; /* Tailwind's zinc-700 */
+    border-radius: 20px;
+  }
+
+  /* Style the scrollbar background (track) */
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  /* Firefox support (limited styling) */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 transparent;
+  }
+}
