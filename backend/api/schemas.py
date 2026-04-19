@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Any
+from datetime import datetime
 
 class UserCreate(BaseModel):
     name: str
@@ -34,3 +35,21 @@ class QueryResponse(BaseModel):
     answer: str
     repo_name: str
     cited_chunks: list[CitedChunk]
+
+class ConversationOut(BaseModel):
+    id: str
+    repo_name: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class MessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    cited_chunks: Optional[list[Any]] = []
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

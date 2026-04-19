@@ -1,5 +1,6 @@
 import uuid
 from pathlib import Path
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -7,11 +8,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sentence_transformers import SentenceTransformer
 
-from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse, UserCreate
+from api.schemas import IndexRequest, IndexResponse, QueryRequest, QueryResponse, UserCreate, ConversationOut, MessageOut
 from api.auth import get_password_hash, verify_password, get_current_user, create_access_token
 from agents.orchestrator import RAGOrchestrator
 from database import get_db, engine, Base
-from models import IndexTask, DocumentChunk, User
+from models import IndexTask, DocumentChunk, User, Conversation, Message
 from api.celery_worker import process_repo_task
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -194,3 +195,58 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     
     access_token = create_access_token(data={"sub": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/conversations", response_model=list[ConversationOut])
+def get_conversations(
+    guest_session_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Fetches all conversations for the sidebar. 
+    Prioritizes the authenticated user, falls back to the guest session.
+    """
+    if current_user:
+        # Fetch logged-in user's history
+        query = select(Conversation).where(
+            Conversation.user_id == current_user.id
+        ).order_by(Conversation.created_at.desc())
+    
+    elif guest_session_id:
+        # Fetch anonymous guest's history
+        query = select(Conversation).where(
+            Conversation.guest_session_id == guest_session_id
+        ).order_by(Conversation.created_at.desc())
+        
+    else:
+        # No user and no guest ID provided
+        return []
+
+    conversations = db.execute(query).scalars().all()
+    return conversations
+
+@app.get("/conversations/{conversation_id}/messages", response_model=list[MessageOut])
+def get_messages(
+    conversation_id: str, 
+    db: Session = Depends(get_db)
+):
+    """
+    Fetches the chronological message history for a specific chat.
+    Includes the cited_chunks JSON so the UI Drawer can rehydrate.
+    """
+    # Verify the conversation exists
+    conv_exists = db.execute(
+        select(Conversation.id).where(Conversation.id == conversation_id)
+    ).first()
+    
+    if not conv_exists:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Fetch all messages in chronological order
+    messages = db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    ).scalars().all()
+
+    return messages
