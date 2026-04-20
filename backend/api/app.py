@@ -305,13 +305,6 @@ def get_messages(
     Fetches the chronological message history for a specific chat.
     Includes the cited_chunks JSON so the UI Drawer can rehydrate.
     """
-    # Verify the conversation exists
-    conv_exists = db.execute(
-        select(Conversation.id).where(Conversation.id == conversation_id)
-    ).first()
-    
-    if not conv_exists:
-        raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Fetch all messages in chronological order
     messages = db.execute(

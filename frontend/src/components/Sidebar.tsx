@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-6 scrollbar-thin">
         {Object.entries(groupedConversations).map(([repoName, convs]) => (
           <div key={repoName} className="px-2">
             <div className="flex items-center gap-2 mb-2 text-xs font-mono font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">

@@ -174,7 +174,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
           CodeLens
         </h1>
         <p className="mb-12 text-[15px] text-center text-neutral-500 dark:text-neutral-400">
-          Paste a GitHub repo and start asking questions about the code.
+          Understand any codebase instantly
         </p>
         
         <form onSubmit={handleSubmit} className="w-full">

@@ -33,10 +33,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isStreamingRef = useRef(false);
 
   useEffect(() => {
     if (conversationId) {
       apiClient.getMessages(conversationId).then(history => {
+        if (isStreamingRef.current) return;
+
         if (history.length > 0) {
           setMessages(history);
         } else {
@@ -68,6 +71,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     
     setIsTyping(true);
+    isStreamingRef.current = true;
     setStatusMessage("Initializing...");
     
     const currentConvId = conversationId || generateId();
@@ -164,6 +168,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     } finally {
       setIsTyping(false);
       setStatusMessage(null);
+      isStreamingRef.current = false;
     }
   };
 

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import text, select
+from sqlalchemy import text, select, update
 from typing import Generator
 
 from agents.query_agent import QueryAgent
@@ -29,12 +29,14 @@ class RAGOrchestrator:
             select(Conversation).where(Conversation.id == conversation_id)
         ).scalar_one_or_none()
 
+        is_new_chat = False
+
         if not conv:
-            chat_title = self.router.generate_title(query)
+            is_new_chat = True
 
             new_conv = Conversation(
                 id=conversation_id,
-                name=chat_title,
+                name="New Chat",
                 user_id=user_id,
                 guest_session_id=guest_session_id,
                 repo_name=repo_name
@@ -49,6 +51,13 @@ class RAGOrchestrator:
         new_user_message = Message(conversation_id=conversation_id, role="user", content=query)
         db.add(new_user_message)
         db.flush()
+
+        if is_new_chat:
+            chat_title = self.router.generate_title(query)
+            db.execute(
+                update(Conversation).where(Conversation.id == conversation_id).values(name=chat_title)
+            )
+            db.flush()
 
         decision = self.router.decide(query, history)
 
