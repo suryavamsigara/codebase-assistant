@@ -186,7 +186,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="github.com/user/repo"
+              placeholder="https://github.com/user/repo"
               disabled={isIndexing}
               className="w-full py-3.5 pl-4 pr-14 text-[15px] bg-transparent border-none outline-none text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400"
             />

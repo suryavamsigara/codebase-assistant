@@ -87,6 +87,16 @@ export const apiClient = {
     }));
   },
 
+  async deleteConversation(conversationId: string, guestSessionId: string): Promise<void> {
+    const res = await fetchWithAuth(`${API_BASE}/conversations/${conversationId}?guest_session_id=${guestSessionId}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to delete conversation');
+    }
+  },
+
   async indexRepository(payload: IndexRequest): Promise<IndexResponse> {
     const res = await fetch(`${API_BASE}/index`, {
       method: 'POST',

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Plus, UserCircle, LogOut } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, UserCircle, LogOut, Trash2 } from 'lucide-react';
 import { FaGithub } from 'react-icons/fa';
 import type { User, Conversation } from '../types';
 
@@ -8,13 +9,14 @@ interface SidebarProps {
   activeConversationId: string | null;
   conversations: Conversation[];
   onSelectConversation: (conv: Conversation) => void;
+  onDeleteConversation: (id: string) => void;
   onNewChat: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
-  user, activeConversationId, conversations, onSelectConversation, onNewChat, onOpenAuth, onLogout 
+  user, activeConversationId, conversations, onSelectConversation, onDeleteConversation, onNewChat, onOpenAuth, onLogout 
 }) => {
   
   const groupedConversations = conversations.reduce((acc, conv) => {
@@ -42,25 +44,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <FaGithub className="w-3 h-3" />
               {repoName.split('/').pop()}
             </div>
+            
             <div className="space-y-0.5">
-              {convs.map(conv => {
-                const isActive = activeConversationId === conv.id;
-                return (
-                  <button
-                    key={conv.id}
-                    onClick={() => onSelectConversation(conv)}
-                    className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm rounded-md transition-colors truncate ${
-                      isActive
-                        ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                        : 'text-neutral-800 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="truncate font-medium">
-                      {conv.name || 'New Conversation'}
-                    </span>
-                  </button>
-                );
-              })}
+              <AnimatePresence initial={false}>
+                {convs.map(conv => {
+                  const isActive = activeConversationId === conv.id;
+                  return (
+                    <motion.div
+                      key={conv.id}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className={`group relative flex items-center w-full rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                          : 'text-neutral-800 dark:text-white/90 hover:bg-black/5 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <button
+                        onClick={() => onSelectConversation(conv)}
+                        className="flex flex-1 items-center gap-2 text-left px-3 py-2 text-sm truncate"
+                      >
+                        <span className="truncate font-medium pr-6">
+                          {conv.name || 'New Conversation'}
+                        </span>
+                      </button>
+
+                      {/* The Hover-Triggered Trash Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevents triggering the select conversation click
+                          onDeleteConversation(conv.id);
+                        }}
+                        className="absolute right-1.5 p-1.5 opacity-0 group-hover:opacity-100 transition-all rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+                        title="Delete Chat"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           </div>
         ))}

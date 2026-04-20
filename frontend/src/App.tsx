@@ -89,6 +89,22 @@ const AppLayout = () => {
     navigate(`/chat/${convId}`); 
   };
 
+  const handleDeleteConversation = async (id: string) => {
+    setConversations(prev => prev.filter(c => c.id !== id));
+
+    if (id === activeConversationId) {
+      setActiveRepo(null);
+      navigate('/');
+    }
+
+    try {
+      const guestId = getOrCreateGuestSessionId();
+      await apiClient.deleteConversation(id, guestId);
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#FAFAFA] dark:bg-[#0A0A0A] font-sans text-neutral-900 dark:text-neutral-100 selection:bg-blue-200 dark:selection:bg-blue-900">
       
@@ -109,6 +125,7 @@ const AppLayout = () => {
                 setActiveRepo(conv.repo_name);
                 navigate(`/chat/${conv.id}`); 
               }}
+              onDeleteConversation={handleDeleteConversation}
               onNewChat={handleNewChat}
               // OPEN AUTH MODAL VIA URL
               onOpenAuth={() => navigate(`${location.pathname}?auth=login`)}

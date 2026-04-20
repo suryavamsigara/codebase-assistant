@@ -253,7 +253,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder="Ask about the codebase..."
               rows={1}
-              className="w-full max-h-48 py-3 pl-4 pr-12 text-sm bg-transparent border-none outline-none resize-none text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 scrollbar-hide"
+              className="w-full max-h-48 py-3 pl-4 pr-12 text-sm bg-transparent border-none outline-none resize-none text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 scrollbar-thin"
             />
             <button onClick={handleSend} disabled={!input.trim() || isTyping} className="absolute right-3 bottom-3 flex items-center justify-center w-8 h-8 transition-colors rounded-full bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-50">
               <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
