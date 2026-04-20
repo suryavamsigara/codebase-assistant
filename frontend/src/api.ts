@@ -12,7 +12,7 @@ import type {
 } from './types';
 import { getCookie } from './utils/session';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8000/api/v1';
 
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = getCookie('access_token');
@@ -27,7 +27,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
 export const apiClient = {
   async getMe(): Promise<User> {
-    const res = await fetchWithAuth(`${API_BASE}/users/me`);
+    const res = await fetchWithAuth(`${API_BASE}/auth/users/me`);
     if (!res.ok) {
       throw new Error('Not authenticated');
     }
@@ -138,7 +138,7 @@ export const apiClient = {
       file_path: filePath,
     });
     
-    const res = await fetch(`${API_BASE}/file?${params.toString()}`, {
+    const res = await fetch(`${API_BASE}/query/file?${params.toString()}`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
@@ -153,7 +153,7 @@ export const apiClient = {
   },
 
   async listRepositories(): Promise<{ repos: string[] }> {
-    const res = await fetch(`${API_BASE}/repos`);
+    const res = await fetch(`${API_BASE}/index/repos`);
     if (!res.ok) throw new Error('Failed to fetch repositories');
     return res.json();
   }
