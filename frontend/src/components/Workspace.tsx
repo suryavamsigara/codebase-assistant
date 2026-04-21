@@ -8,7 +8,7 @@ import { apiClient } from '../api';
 import type { Message, Chunk } from '../types';
 import { generateId, getOrCreateGuestSessionId, getCookie } from '../utils/session';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8000/api/v1';
 
 interface WorkspaceProps {
   repoName: string;

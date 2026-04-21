@@ -116,7 +116,7 @@ export const apiClient = {
   },
 
   async queryRepository(payload: QueryRequest): Promise<NormalizedQueryResponse> {
-    const res = await fetchWithAuth(`${API_BASE}/query`, {
+    const res = await fetchWithAuth(`${API_BASE}/query/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

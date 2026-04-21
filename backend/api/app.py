@@ -6,23 +6,32 @@ from sentence_transformers import SentenceTransformer
 from agents.orchestrator import RAGOrchestrator
 from database import engine, Base
 from api.routers import index, query, auth_router, conversations
+from logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting application..")
+    logger.info("--- Starting Codebase RAG Application ---")
 
-    print("Connecting to database...")
-    # Create the database tables
-    Base.metadata.create_all(bind=engine)
+    try:
+        logger.info("Initializing database tables...")
+        # Create the database tables
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database connection and tables verified.")
 
-    print("Loading Embedding Model...")
-    embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    app.state.orchestrator = RAGOrchestrator(embedding_model=embedding_model)
+        logger.info("Loading Embedding Model (BAAI/bge-small-en-v1.5)...")
+        embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
-    print("App ready.")
+        logger.info("Initializing RAG Orchestrator...")
+        app.state.orchestrator = RAGOrchestrator(embedding_model=embedding_model)
+
+        logger.info("Application startup complete. Ready for requests.")
+    except Exception as e:
+        logger.critical(f"Startup failed: {str(e)}", exc_info=True)
+        raise e
+
     yield
-
-    print("Shutting down...")
+    
+    logger.info("Shutting down application...")
 
 app = FastAPI(title="Codebase RAG API", lifespan=lifespan)
 

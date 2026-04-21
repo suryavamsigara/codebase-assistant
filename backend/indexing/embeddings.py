@@ -1,7 +1,9 @@
+import time
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from transformers import logging
 import faiss
+from logger import logger
 
 logging.set_verbosity_error()
 
@@ -39,17 +41,27 @@ class Embedder:
             return f"{header}\n---\n{chunk.get('code', '')}"
     
     def embed_chunks(self):
-        print("Embedding chunks")
+        if not self.chunks:
+            logger.warning("Embedder called with an empty list of chunks.")
+            return
+        
+        logger.info(f"Generating embeddings for {len(self.chunks)} chunks...")
+        start_time = time.time()
+
         texts_to_embed = [self.create_contextual_header(chunk) for chunk in self.chunks]
-        # print(texts_to_embed[:3])
-        self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
-        print("Embeds: ", self.embeddings.shape)
 
-        faiss.normalize_L2(self.embeddings)
+        try:
+            self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
+            duration = time.time() - start_time
+            logger.info(f"Successfully generated {self.embeddings.shape} embeddings in {duration:.2f}s")
 
-        dimension = self.embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(dimension)
-        self.index.add(self.embeddings)
+            faiss.normalize_L2(self.embeddings)
+
+            dimension = self.embeddings.shape[1]
+            self.index = faiss.IndexFlatIP(dimension)
+            self.index.add(self.embeddings)
+        except Exception as e:
+            logger.error(f"Embedding process failed: {str(e)}", exc_info=True)
 
 # ============================================================================================
 

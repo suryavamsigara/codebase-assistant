@@ -86,8 +86,6 @@ class AnswerAgent:
             "role": "user",
             "content": USER_PROMPT
         })
-
-        print(f"Querying LLM (History Length: {len(history)} messages)")
         
         response = self.client.chat.completions.create(
             model="deepseek-chat",

@@ -7,6 +7,7 @@ from agents.answer_agent import AnswerAgent
 from agents.query_router import QueryRouter
 from models import DocumentChunk, Conversation, Message
 from retrieval.hybrid_search import reciprocal_rank_fusion
+from logger import logger
 
 class RAGOrchestrator:
     def __init__(self, embedding_model: str):
@@ -68,10 +69,11 @@ class RAGOrchestrator:
             if decision == "retrieve":
                 yield {"type": "status", "message": "Searching codebase"}
 
-                print("Router Decision: Searching codebase...")
+                logger.info(f"Router decision: {decision} | Conv: {conversation_id}")
 
                 sub_queries = self.query_agent.rewrite_query(query) # list[str]
-                print(f"============\nResponse: {sub_queries}\n============")
+                logger.info(f"Query Agent generated {len(sub_queries)} sub-queries for rewrite")
+                logger.debug(f"Sub-queries: {sub_queries}") 
 
                 all_unique_chunk_ids = set()
 
@@ -110,7 +112,7 @@ class RAGOrchestrator:
                         for doc_id, score in fused_results[:6]:
                             all_unique_chunk_ids.add(doc_id)
 
-                print(f"\nRetrieved {len(all_unique_chunk_ids)} unique chunks")
+                logger.info(f"Retrieved {len(all_unique_chunk_ids)} unique chunks from Hybrid Search")
 
                 if not all_unique_chunk_ids:
                     return "I couldn't find relevant code for this question."
@@ -173,7 +175,7 @@ class RAGOrchestrator:
 
         except Exception as e:
             db.rollback()
-            print(f"Stream interrupted: {str(e)}")
+            logger.error(f"RAG Stream Error: {str(e)}", exc_info=True)
             yield {"type": "error", "message": "Connection lost or LLM failed."}
 
         finally:

@@ -38,7 +38,6 @@ class RepoWalker:
         target_dir: Path = self.repo_path
         
         if not target_dir.is_dir():
-            print(f"Directory {target_dir} doesn't exist")
             return
 
         for root, dirs, files in target_dir.walk(): # (Path, List[str], List[str])
@@ -56,8 +55,6 @@ class RepoWalker:
                 else:
                     language = self.extensions[ext]
                 
-                print(f"Yielding file : {file_path}")
-
                 yield {
                     'file_path': str(file_path.relative_to(self.repo_path)),
                     'absolute_path': file_path,

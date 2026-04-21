@@ -32,7 +32,6 @@ class QueryAgent:
             }
         ]
 
-        print("Querying LLM")
         response = self.client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,

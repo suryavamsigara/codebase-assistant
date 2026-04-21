@@ -5,6 +5,7 @@ from sqlalchemy import text
 from database import SessionLocal
 from models import IndexTask, DocumentChunk
 from indexing.pipeline import IndexingPipeline
+from logger import logger
 
 """
 This worker runs the pipeline, generates the embeddings, saves everything to PostgreSQL, and triggers tsvector generation.
@@ -25,16 +26,21 @@ def clone_repo(github_url: str, repo_name: str) -> Path:
     repo_path = TEMP_DIR / repo_name
 
     if repo_path.exists():
-        print(f"Repo already exists at {repo_path}")
+        logger.info(f"Repo {repo_name} already exists. Skipping clone.")
         return repo_path
     
-    print(f"Cloning {github_url} to {repo_path}")
-    subprocess.run(
-        ["git", "clone", github_url, str(repo_path)],
-        check=True,
-        capture_output=True
-    )
-    print("Clone complete")
+    logger.info(f"Cloning {github_url}...")
+
+    try:
+        subprocess.run(
+            ["git", "clone", github_url, str(repo_path)],
+            check=True,
+            capture_output=True
+        )
+        logger.info(f"Successfully cloned {repo_name}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Git clone failed for {repo_name}: {e.stderr.decode()}")
+        raise e
     return repo_path
 
 @celery_app.task(bind=True)
@@ -84,10 +90,11 @@ def process_repo_task(self, task_id: str, github_url: str, repo_name: str):
                 )
             )
 
+        logger.info(f"Bulk saving {len(pipeline.all_chunks)} chunks to Postgres...")
         db.bulk_save_objects(db_chunks)
         db.commit()
 
-
+        logger.info("Generating SQL tsvectors for keyword search...")
         db.execute(
             text("""
             UPDATE document_chunks
@@ -102,12 +109,12 @@ def process_repo_task(self, task_id: str, github_url: str, repo_name: str):
         )
         db.commit()
 
-        print("Repo Indexed.")
-
+        logger.info(f"Task {task_id} COMPLETED for {repo_name}")
         task.status = "COMPLETED"
         db.commit()
 
     except Exception as e:
+        logger.error(f"Task {task_id} FAILED: {str(e)}", exc_info=True)
         task.status = "FAILED"
         db.commit()
     finally:
