@@ -103,6 +103,9 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (res.status === 429) {
+      throw new Error('429');
+    }
     if (!res.ok) throw new Error('Failed to start indexing');
     return res.json();
   },

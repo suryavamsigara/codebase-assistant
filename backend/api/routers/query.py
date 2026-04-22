@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,47 +11,17 @@ from api.schemas import QueryRequest, QueryResponse
 from models import User, DocumentChunk
 from api.dependencies import get_orchestrator
 from logger import logger
+from api.limiter import limiter
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 TEMP_DIR = BASE_DIR / "tmp"
 
 router = APIRouter(prefix="/query", tags=["query"])
 
-@router.post("/", response_model=QueryResponse)
-def query_repo(
-    req: QueryRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    orchestrator = Depends(get_orchestrator)
-):
-    user_id = current_user.id if current_user else None
-
-    repo_exists = db.execute(
-        select(DocumentChunk.id).where(DocumentChunk.repo_name == req.repo_name)).first()
-
-    if not repo_exists:
-        raise HTTPException(status_code=404, detail=f"Repo '{req.repo_name}' not indexed yet.")
-    
-    try:
-        answer, cited_chunks = orchestrator.process_query(
-            req.query,
-            repo_name=req.repo_name,
-            db=db,
-            conversation_id=req.conversation_id,
-            guest_session_id=req.guest_session_id,
-            user_id=user_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
-    
-    return QueryResponse(
-        answer=answer,
-        repo_name=req.repo_name,
-        cited_chunks=cited_chunks
-    )
-
 @router.post("/stream", response_model=QueryResponse)
+@limiter.limit("6/minute")
 def query_repo(
+    request: Request,
     req: QueryRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -118,3 +88,41 @@ def get_full_file(repo_name: str, file_path: str):
     except Exception as e:
         logger.error(f"Unexpected error reading {file_path}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error reading the file.")
+    
+
+
+
+
+# ========================== OLD ===============================
+@router.post("/", response_model=QueryResponse)
+def query_repo(
+    req: QueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    orchestrator = Depends(get_orchestrator)
+):
+    user_id = current_user.id if current_user else None
+
+    repo_exists = db.execute(
+        select(DocumentChunk.id).where(DocumentChunk.repo_name == req.repo_name)).first()
+
+    if not repo_exists:
+        raise HTTPException(status_code=404, detail=f"Repo '{req.repo_name}' not indexed yet.")
+    
+    try:
+        answer, cited_chunks = orchestrator.process_query(
+            req.query,
+            repo_name=req.repo_name,
+            db=db,
+            conversation_id=req.conversation_id,
+            guest_session_id=req.guest_session_id,
+            user_id=user_id
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
+    
+    return QueryResponse(
+        answer=answer,
+        repo_name=req.repo_name,
+        cited_chunks=cited_chunks
+    )

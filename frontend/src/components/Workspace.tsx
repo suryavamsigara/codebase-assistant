@@ -7,6 +7,7 @@ import { CodeDrawer } from './CodeDrawer';
 import { apiClient } from '../api';
 import type { Message, Chunk } from '../types';
 import { generateId, getOrCreateGuestSessionId, getCookie } from '../utils/session';
+import { Toast } from './Toast';
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
@@ -23,6 +24,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Streaming & Loading States
   const [isTyping, setIsTyping] = useState(false);
@@ -96,6 +99,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           guest_session_id: guestId
         })
       });
+
+      if (response.status === 429) {
+        // Remove user's message from UI
+        setMessages(prev => prev.filter(m => m.id !== userMsgId && m.id !== aiMsgId));
+
+        // Restore user's text to the input field
+        setInput(userText);
+
+        // Trigger notification
+        setToastMessage("You're doing that too fast. Please wait a moment.");
+
+        return
+      }
 
       if (!response.body) throw new Error("No readable stream");
 
@@ -174,6 +190,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
   return (
     <div className="flex flex-1 w-full h-full overflow-hidden bg-[#FAFAFA] dark:bg-[#0A0A0A]">
+      <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       <div className="flex flex-col flex-1 min-w-0 relative z-10">
         
         <header className="flex items-center justify-between h-14 px-4 border-b border-black/5 dark:border-white/5 bg-white/70 dark:bg-[#0A0A0A]/70 backdrop-blur-xl">

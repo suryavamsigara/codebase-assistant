@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from contextlib import asynccontextmanager
 from sentence_transformers import SentenceTransformer
 
 from agents.orchestrator import RAGOrchestrator
 from database import engine, Base
 from api.routers import index, query, auth_router, conversations
+from api.limiter import limiter
 from logger import logger
 
 @asynccontextmanager
@@ -34,6 +37,9 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down application...")
 
 app = FastAPI(title="Codebase RAG API", lifespan=lifespan)
+app.state.limiter = limiter
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 origins = [
     "http://localhost:5173",

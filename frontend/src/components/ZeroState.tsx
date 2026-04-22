@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../api';
 import type { User } from '../types';
+import { Toast } from './Toast';
 
 interface ZeroStateProps {
   onIndexComplete: (repoName: string) => void;
@@ -31,6 +32,8 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
   const [isIndexing, setIsIndexing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('Starting task...');
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const extractRepoData = (input: string) => {
     let cleanUrl = input.trim();
@@ -120,14 +123,20 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
         }
       }, 2000);
 
-    } catch (err) {
+    } catch (err: any) {
       setIsIndexing(false);
-      setError("Failed to communicate with the indexing service.");
+      
+      if (err.message === '429') {
+        setToastMessage("You're doing that too fast. Please wait a moment.");
+      } else {
+        setError("Failed to communicate with the indexing service.");
+      }
     }
   };
 
   return (
     <div className="flex-1 w-full h-full flex flex-col items-center justify-center p-6 bg-[#FAFAFA] dark:bg-[#0A0A0A] relative overflow-hidden">
+      <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       
       {/* Floating Top Navigation */}
       <header className="absolute top-0 left-0 w-full flex items-center justify-between p-4 md:p-6 z-20 pointer-events-none">

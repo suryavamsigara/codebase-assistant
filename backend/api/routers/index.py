@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,11 +8,13 @@ from models import IndexTask
 from api.schemas import IndexRequest
 from api.celery_worker import process_repo_task
 from logger import logger
+from api.limiter import limiter
 
 router = APIRouter(prefix="/index", tags=["index"])
 
 @router.post("/", status_code=202)
-def index_repo(req: IndexRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute") # 3 indexes per minute per IP
+def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db)):
     logger.info(f"Indexing request received for repo: {req.repo_name} ({req.github_url})")
 
     try:
