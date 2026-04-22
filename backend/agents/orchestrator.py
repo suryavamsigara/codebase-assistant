@@ -47,9 +47,28 @@ class RAGOrchestrator:
             db.add(new_conv)
             db.flush()
         
-        history = db.execute(
-            select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
+        WINDOW_SIZE = 8
+
+        first_messages = db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+            .limit(2)
         ).scalars().all()
+
+        recent_messages_query = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.id.notin_([m.id for m in first_messages]) 
+            )
+            .order_by(Message.created_at.desc())
+            .limit(WINDOW_SIZE)
+        )
+
+        recent_messages = list(reversed(db.execute(recent_messages_query).scalars().all()))
+
+        history = first_messages + recent_messages
 
         new_user_message = Message(conversation_id=conversation_id, role="user", content=query)
         db.add(new_user_message)
