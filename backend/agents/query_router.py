@@ -53,11 +53,14 @@ class QueryRouter:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": first_query}
                 ],
-                temperature=0.3
+                temperature=0.3,
+                timeout=5
             )
             title = response.choices[0].message.content.strip()
+            logger.info(f"Title generated: '{title}'")
 
             return title.strip('"').strip("'")
         except Exception as e:
+            logger.warning(f"Failed to generate title: {e}")
             return "New Conversation"
         

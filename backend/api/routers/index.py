@@ -9,6 +9,7 @@ from api.schemas import IndexRequest
 from api.celery_worker import process_repo_task
 from logger import logger
 from api.limiter import limiter
+from api.utils import get_estimated_indexing_time
 
 router = APIRouter(prefix="/index", tags=["index"])
 
@@ -41,6 +42,7 @@ def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db
                 }
 
         task_id = str(uuid.uuid4())
+        eta_seconds = get_estimated_indexing_time(req.github_url)
 
         new_task = IndexTask(id=task_id, repo_name=req.repo_name, status="PENDING")
         db.add(new_task)
@@ -52,7 +54,8 @@ def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db
         return {
             "task_id": task_id,
             "repo_name": req.repo_name.lower().strip(),
-            "message": "Indexing started in background."
+            "message": "Indexing started in background.",
+            "estimated_seconds": eta_seconds
         }
     except Exception as e:
         logger.error(f"Failed to initiate indexing for {req.repo_name}: {str(e)}", exc_info=True)

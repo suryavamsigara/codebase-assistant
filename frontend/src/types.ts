@@ -46,6 +46,7 @@ export interface IndexResponse {
   task_id: string;
   repo_name: string;
   message: string;
+  estimated_seconds?: number;
 }
 
 export interface StatusResponse {

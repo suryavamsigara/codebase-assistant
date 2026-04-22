@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGithub } from 'react-icons/fa';
 import { 
   ArrowRight, 
   Loader2, 
-  Terminal,
+  Terminal, 
   PanelLeftClose, 
   PanelLeftOpen, 
   UserCircle 
@@ -32,8 +32,38 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
   const [isIndexing, setIsIndexing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('Starting task...');
-
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // Safely tick down the timer
+  useEffect(() => {
+    let timerId: NodeJS.Timeout;
+    
+    if (isIndexing && timeLeft !== null && timeLeft > 0) {
+      timerId = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timerId);
+            return 0; // Lock at 0 to trigger graceful degradation
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    // Cleanup on unmount or when indexing stops
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [isIndexing, timeLeft === null]);
+
+  // Helper to format MM:SS
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   const extractRepoData = (input: string) => {
     let cleanUrl = input.trim();
@@ -65,7 +95,6 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
     } catch {
       return null;
     }
-    
     return null;
   };
 
@@ -81,6 +110,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
 
     setIsIndexing(true);
     setError(null);
+    setTimeLeft(null); // Reset timer on new submission
     setStatusText('Contacting orchestrator...');
 
     try {
@@ -88,6 +118,11 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
         github_url: parsedData.fullUrl, 
         repo_name: parsedData.repoName 
       });
+      
+      // Capture estimated seconds from the backend
+      if (response.estimated_seconds) {
+        setTimeLeft(response.estimated_seconds);
+      }
       
       if (response.message === "Repo is already indexed.") {
         setIsIndexing(false);
@@ -106,7 +141,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
           const { status } = await apiClient.checkTaskStatus(response.task_id);
           
           if (status === 'PROCESSING') {
-            setStatusText('Generating embeddings via orchestrator...');
+            setStatusText('Generating embeddings...');
           } else if (status === 'SUCCESS' || status === 'COMPLETED') {
             clearInterval(pollInterval);
             setIsIndexing(false);
@@ -114,18 +149,20 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
           } else if (status === 'FAILED' || status === 'FAILURE') {
             clearInterval(pollInterval);
             setIsIndexing(false);
+            setTimeLeft(null); // Kill the timer on error
             setError("Indexing failed on the server.");
           }
         } catch (err) {
           clearInterval(pollInterval);
           setIsIndexing(false);
+          setTimeLeft(null);
           setError("Lost connection to indexing service.");
         }
       }, 2000);
 
     } catch (err: any) {
       setIsIndexing(false);
-      
+      setTimeLeft(null);
       if (err.message === '429') {
         setToastMessage("You're doing that too fast. Please wait a moment.");
       } else {
@@ -167,7 +204,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
       </header>
 
       {/* Background ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
@@ -195,7 +232,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://github.com/user/repo"
+              placeholder="github.com/user/repo"
               disabled={isIndexing}
               className="w-full py-3.5 pl-4 pr-14 text-[15px] bg-transparent border-none outline-none text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400"
             />
@@ -214,13 +251,14 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
             </div>
           </div>
           
-          <div className="h-10 mt-4 flex items-center justify-center text-sm">
+          {/* Status, Errors, and Timer */}
+          <div className="min-h-[3.5rem] mt-4 flex items-start justify-center text-sm">
             <AnimatePresence mode="wait">
               {error ? (
                 <motion.span 
                   key="error"
                   initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="text-red-500 font-medium"
+                  className="text-red-500 font-medium mt-2"
                 >
                   {error}
                 </motion.span>
@@ -228,19 +266,35 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
                 <motion.div 
                   key="indexing"
                   initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-center gap-2.5 text-neutral-500 dark:text-neutral-400"
+                  className="flex flex-col items-center gap-2 mt-2"
                 >
-                  <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                  <span>{statusText}</span>
+                  <div className="flex items-center gap-2.5 text-neutral-500 dark:text-neutral-400">
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                    <span>{statusText}</span>
+                  </div>
+                  
+                  {/* The Smart Countdown Timer */}
+                  {timeLeft !== null && (
+                    <motion.div 
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      className="text-[11px] font-mono tracking-wide"
+                    >
+                      {timeLeft > 0 ? (
+                        <span className="text-neutral-400 dark:text-neutral-500">
+                          {formatTime(timeLeft)} remaining
+                        </span>
+                      ) : (
+                        <span className="animate-pulse text-neutral-400 dark:text-neutral-500">
+                          Almost there, wrapping up final files...
+                        </span>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
               ) : null}
             </AnimatePresence>
           </div>
         </form>
-
-        <p className="mt-8 text-[13px] text-center text-neutral-400 dark:text-neutral-500 max-w-sm leading-relaxed">
-          Indexing may take a moment for large repositories.
-        </p>
 
       </motion.div>
     </div>

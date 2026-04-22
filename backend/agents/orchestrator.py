@@ -6,6 +6,7 @@ from agents.query_agent import QueryAgent
 from agents.answer_agent import AnswerAgent
 from agents.query_router import QueryRouter
 from models import DocumentChunk, Conversation, Message
+from database import SessionLocal
 from retrieval.hybrid_search import reciprocal_rank_fusion
 from logger import logger
 
@@ -23,7 +24,8 @@ class RAGOrchestrator:
         db: Session,
         conversation_id: str,
         guest_session_id: str,
-        user_id: str
+        user_id: str,
+        background_tasks
     ) -> AsyncGenerator: #tuple[str, list[dict[str, any]]]:
         
         conv = db.execute(
@@ -54,12 +56,13 @@ class RAGOrchestrator:
         db.flush()
 
         if is_new_chat:
-            chat_title = await self.router.generate_title(query)
-            db.execute(
-                update(Conversation).where(Conversation.id == conversation_id).values(name=chat_title)
+            background_tasks.add_task(
+                self._generate_and_save_title_background,
+                query,
+                conversation_id
             )
-            db.flush()
 
+        logger.info("Calling decide function")
         decision = await self.router.decide(query, history)
 
         retrieved_chunks = []
@@ -71,7 +74,7 @@ class RAGOrchestrator:
 
                 logger.info(f"Router decision: {decision} | Conv: {conversation_id}")
 
-                sub_queries = self.query_agent.rewrite_query(query) # list[str]
+                sub_queries = await self.query_agent.rewrite_query(query) # list[str]
                 logger.info(f"Query Agent generated {len(sub_queries)} sub-queries for rewrite")
                 logger.debug(f"Sub-queries: {sub_queries}") 
 
@@ -176,3 +179,18 @@ class RAGOrchestrator:
 
         finally:
             yield {"type": "done"}
+    
+    async def _generate_and_save_title_background(self, first_query: str, conversation_id: str):
+        """Runs in the background so that the user doesn't wait"""
+        db = SessionLocal()
+        try:
+            chat_title = await self.router.generate_title(first_query)
+            db.execute(
+                update(Conversation).where(Conversation.id == conversation_id).values(name=chat_title)
+            )
+            db.commit()
+            logger.info(f"Background title updated for {conversation_id}: {chat_title}")
+        except Exception as e:
+            logger.error(f"Background title generation failed: {e}")
+        finally:
+            db.close()

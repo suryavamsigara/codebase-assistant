@@ -6,7 +6,7 @@ class QueryAgent:
     def __init__(self):
         self.client = get_client()
 
-    def rewrite_query(self, original_query: str) -> list[str]:
+    async def rewrite_query(self, original_query: str) -> list[str]:
         """Generates 3 subqueries from the original query."""
         SYSTEM_PROMPT = f"""You are a code search assistant. Given a question about a codebase, 
         generate 3 search queries that would help find relevant code. Each query should target 
@@ -32,7 +32,7 @@ class QueryAgent:
             }
         ]
 
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model="deepseek-chat",
             messages=messages,
             temperature=0.3

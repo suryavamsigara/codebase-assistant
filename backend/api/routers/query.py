@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,6 +23,7 @@ router = APIRouter(prefix="/query", tags=["query"])
 async def query_repo(
     request: Request,
     req: QueryRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     orchestrator = Depends(get_orchestrator)
@@ -50,7 +51,8 @@ async def query_repo(
                 db=db,
                 conversation_id=req.conversation_id,
                 guest_session_id=req.guest_session_id,
-                user_id=user_id
+                user_id=user_id,
+                background_tasks=background_tasks
             ):
                 yield f"data: {json.dumps(event)}\n\n"
             
