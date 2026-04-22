@@ -20,7 +20,7 @@ router = APIRouter(prefix="/query", tags=["query"])
 
 @router.post("/stream", response_model=QueryResponse)
 @limiter.limit("6/minute")
-def query_repo(
+async def query_repo(
     request: Request,
     req: QueryRequest,
     db: Session = Depends(get_db),
@@ -41,10 +41,10 @@ def query_repo(
         logger.warning(f"Query Rejected: Repo '{req.repo_name}' is not indexed.")
         raise HTTPException(status_code=404, detail=f"Repo '{req.repo_name}' not indexed yet.")
     
-    def event_generator():
+    async def event_generator():
         logger.info(f"Starting SSE stream for Conv_ID: {req.conversation_id}")
         try:
-            for event in orchestrator.process_query(
+            async for event in orchestrator.process_query(
                 req.query,
                 repo_name=req.repo_name,
                 db=db,

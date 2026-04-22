@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text, select, update
-from typing import Generator
+from typing import AsyncGenerator
 
 from agents.query_agent import QueryAgent
 from agents.answer_agent import AnswerAgent
@@ -16,7 +16,7 @@ class RAGOrchestrator:
         self.router = QueryRouter()
         self.embedding_model = embedding_model
     
-    def process_query(
+    async def process_query(
         self,
         query: str,
         repo_name: str,
@@ -24,7 +24,7 @@ class RAGOrchestrator:
         conversation_id: str,
         guest_session_id: str,
         user_id: str
-    ) -> Generator: #tuple[str, list[dict[str, any]]]:
+    ) -> AsyncGenerator: #tuple[str, list[dict[str, any]]]:
         
         conv = db.execute(
             select(Conversation).where(Conversation.id == conversation_id)
@@ -54,13 +54,13 @@ class RAGOrchestrator:
         db.flush()
 
         if is_new_chat:
-            chat_title = self.router.generate_title(query)
+            chat_title = await self.router.generate_title(query)
             db.execute(
                 update(Conversation).where(Conversation.id == conversation_id).values(name=chat_title)
             )
             db.flush()
 
-        decision = self.router.decide(query, history)
+        decision = await self.router.decide(query, history)
 
         retrieved_chunks = []
         answer_text = ""
@@ -115,7 +115,7 @@ class RAGOrchestrator:
                 logger.info(f"Retrieved {len(all_unique_chunk_ids)} unique chunks from Hybrid Search")
 
                 if not all_unique_chunk_ids:
-                    return "I couldn't find relevant code for this question."
+                    yield {"type": "token", "content": "I couldn't find relevant code for this question."}
 
                 top_chunks_db = db.execute(
                     select(DocumentChunk).where(DocumentChunk.id.in_(all_unique_chunk_ids))
@@ -136,11 +136,7 @@ class RAGOrchestrator:
                     for c in top_chunks_db
                 ]
 
-                print("\n===================================")
-
-                for c in retrieved_chunks:
-                    print(f"File: {c['file_path']} | Lines: {c['start_line']}-{c['end_line']}")
-                print("===================================\n")
+                logger.info(f"Context rehydrated: {len(retrieved_chunks)} files loaded into LLM prompt.")
 
                 yield {"type": "citations", "chunks": retrieved_chunks}
 
@@ -148,15 +144,15 @@ class RAGOrchestrator:
 
                 # response = self.answer_agent.generate_answer(query, retrieved_chunks, history)
 
-                for token in self.answer_agent.stream_answer(query, retrieved_chunks, history):
+                async for token in self.answer_agent.stream_answer(query, retrieved_chunks, history):
                     answer_text += token
                     yield {"type": "token", "content": token}
                         
             else:
                 yield {"type": "status", "message": "Generating response"}
-                print("Router Decision: Conversing using history...")
+                logger.info(f"Router Decision: Skipping retrieval, using conversation history.")
 
-                for token in self.answer_agent.stream_answer(query, [], history):
+                async for token in self.answer_agent.stream_answer(query, [], history):
                     answer_text += token
                     yield {"type": "token", "content": token}
 

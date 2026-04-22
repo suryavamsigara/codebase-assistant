@@ -1,11 +1,12 @@
 from agents.deepseek import get_client
-from typing import Generator
+from typing import AsyncGenerator
+from logger import logger
 
 class AnswerAgent:
     def __init__(self):
         self.client = get_client()
 
-    def stream_answer(self, query: str, retrieved_chunks: list[dict], history: list) -> Generator:
+    async def stream_answer(self, query: str, retrieved_chunks: list[dict], history: list) -> AsyncGenerator:
         formatted_chunks = []
         for i, chunk in enumerate(retrieved_chunks):
             parent_str = f"Parent Class: {chunk['parent_class']}\n" if chunk.get('parent_class') else ""
@@ -87,18 +88,24 @@ class AnswerAgent:
             "content": USER_PROMPT
         })
         
-        response = self.client.chat.completions.create(
-            model="deepseek-chat",
-            messages=messages,
-            temperature=0.3,
-            stream=True
-        )
+        try:
+            response = await self.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=messages,
+                temperature=0.3,
+                stream=True
+            )
+            logger.info(f"Stream started for query: {query[:50]}...")
 
-        for chunk in response:
-            content = chunk.choices[0].delta.content
-            if content is not None:
-                yield content
-                
+            async for chunk in response:
+                content = chunk.choices[0].delta.content
+                if content is not None:
+                    yield content
+
+        except Exception as e:
+            logger.error(f"LLLM provider error: {str(e)}", exc_info=True)
+            yield "Sorry, I encountered an error connecting to the AI service."
+                    
 
 
         # message = response.choices[0].message

@@ -1,11 +1,12 @@
 import json
 from agents.deepseek import get_client
+from logger import logger
 
 class QueryRouter:
     def __init__(self):
         self.client = get_client()
     
-    def decide(self, user_message: str, history: list) -> str:
+    async def decide(self, user_message: str, history: list) -> str:
         """
         Returns 'chat_only' or 'retrieve'
         """
@@ -24,7 +25,7 @@ class QueryRouter:
 
         PROMPT = f"Recent History:\n{recent_context}\n\nUser Message: {user_message}"
 
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model="deepseek-chat",
             response_format={"type": "json_object"},
             messages=[
@@ -33,16 +34,20 @@ class QueryRouter:
             ]
         )
 
-        result = json.loads(response.choices[0].message.content)
-        return result.get("decision", "retrieve")
+        try:
+            result = json.loads(response.choices[0].message.content)
+            return result.get("decision", "retrieve")
+        except Exception as e:
+            logger.error(f"Router decision failed: {e}")
+            return "retrieve"
     
-    def generate_title(self, first_query: str) -> str:
+    async def generate_title(self, first_query: str) -> str:
         """Generates a 4-5 word title for a new conversation."""
 
         system_prompt = "You are a title generator. Create a brief, 4-5 word summary title for a conversation starting with the user's message. Return ONLY the title string, no quotes, no extra text."
         
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[
                     {"role": "system", "content": system_prompt},
