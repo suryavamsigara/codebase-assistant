@@ -56,11 +56,6 @@ class AnswerAgent:
         </citation_rules>
 
         <examples>
-        BAD RESPONSE (DO NOT DO THIS):
-        1. Gradient Flow
-        Parameter Registration: The linear layer creates weight and bias nn/layers.py.
-        The backward method builds the order [tensor.py](#chunk-0] [tensor.py](#chunk-1, chunk-2).
-
         GOOD RESPONSE (DO THIS STRICTLY):
         ### Gradient Flow
         - **Parameter Registration:** The linear layer creates weight and bias [nn/layers.py](#chunk-0).

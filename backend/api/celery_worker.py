@@ -5,6 +5,7 @@ from sqlalchemy import text
 from database import SessionLocal
 from models import IndexTask, DocumentChunk
 from indexing.pipeline import IndexingPipeline
+from config import settings
 from logger import logger
 
 """
@@ -13,8 +14,8 @@ This worker runs the pipeline, generates the embeddings, saves everything to Pos
 
 celery_app = Celery(
     "codebase_rag",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    broker=settings.redis_url,
+    backend=settings.redis_url
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
