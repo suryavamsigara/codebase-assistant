@@ -218,7 +218,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
         </div>
         
         <h1 className="mb-3 text-3xl font-medium tracking-tight text-neutral-900 dark:text-white">
-          CodeLens
+          AskRepo
         </h1>
         <p className="mb-12 text-[15px] text-center text-neutral-500 dark:text-neutral-400">
           Understand any codebase instantly
