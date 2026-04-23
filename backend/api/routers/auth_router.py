@@ -42,6 +42,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
                 "email": new_user.email
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected error during registration: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -62,12 +64,16 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         logger.info(f"Successful login: {user.id}")
         access_token = create_access_token(data={"sub": user.id})
         return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Login system error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Authentication service unavailable")
 
 @router.get("/users/me")
 def read_users_me(current_user: User = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     return {
         "name": current_user.name,
         "email": current_user.email

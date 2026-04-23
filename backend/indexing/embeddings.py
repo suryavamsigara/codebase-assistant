@@ -10,7 +10,6 @@ logging.set_verbosity_error()
 class Embedder:
     def __init__(self, model_name:str="BAAI/bge-small-en-v1.5", chunks: list[dict]=None):
         self.embeddings = None
-        self.index = None
         self.model = SentenceTransformer(model_name)
         self.chunks = chunks
 
@@ -54,56 +53,5 @@ class Embedder:
             self.embeddings = self.model.encode(texts_to_embed, show_progress_bar=False)
             duration = time.time() - start_time
             logger.info(f"Successfully generated {self.embeddings.shape} embeddings in {duration:.2f}s")
-
-            faiss.normalize_L2(self.embeddings)
-
-            dimension = self.embeddings.shape[1]
-            self.index = faiss.IndexFlatIP(dimension)
-            self.index.add(self.embeddings)
         except Exception as e:
             logger.error(f"Embedding process failed: {str(e)}", exc_info=True)
-
-# ============================================================================================
-
-    # will delete these later since I'm no longer using faiss
-    def save(self, path):
-        """Save index and metadata"""
-        print("Saving index")
-        path = Path(path)
-        path.mkdir(parents=True, exist_ok=True)
-        faiss.write_index(self.index, str(path / "index.faiss"))
-
-    def load(self, path):
-        print("Loading index")
-        path = Path(path)
-        self.index = faiss.read_index(str(path / "index.faiss"))
-    
-    def search(self, query: str, k: int = 1):
-        print("Searching query")
-        query_embedding = self.model.encode([query]).astype('float32')
-        faiss.normalize_L2(query_embedding)
-
-        scores, indices = self.index.search(query_embedding, min(k, len(self.chunks)))
-
-        results = []
-
-        for score, idx in zip(scores[0], indices[0]):
-            chunk = self.chunks[idx]
-
-            results.append({
-                'rank': len(results) + 1,
-                'score': float(score),
-                'code': chunk['code'],
-                'file_path': chunk['file_path'],
-                'start_line': chunk['start_line'],
-                'end_line': chunk['end_line'],
-                'parent_class': chunk.get('parent_class'),
-                'docstring': chunk.get('docstring'),
-                'repo_name': chunk['repo_name'],
-            })
-
-            if len(results) >= k:
-                break
-        
-        return results
-

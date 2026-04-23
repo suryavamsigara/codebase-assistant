@@ -9,6 +9,7 @@ from agents.orchestrator import RAGOrchestrator
 from database import engine, Base
 from api.routers import index, query, auth_router, conversations
 from api.limiter import limiter
+from config import settings
 from logger import logger
 
 @asynccontextmanager
@@ -41,10 +42,7 @@ app.state.limiter = limiter
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,

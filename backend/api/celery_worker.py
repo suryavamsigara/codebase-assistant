@@ -64,8 +64,6 @@ def process_repo_task(self, task_id: str, github_url: str, repo_name: str):
             repo_name=repo_name
         )
 
-        pipeline.embedder.embed_chunks()
-
         # Save to database
         db_chunks = []
         for i, chunk in enumerate(pipeline.all_chunks):

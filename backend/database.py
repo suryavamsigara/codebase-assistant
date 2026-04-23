@@ -10,8 +10,6 @@ SessionLocal = sessionmaker(autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
-Base.metadata.create_all(bind=engine)
-
 def get_db():
     with SessionLocal() as db:
         yield db
