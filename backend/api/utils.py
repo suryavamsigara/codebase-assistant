@@ -1,4 +1,6 @@
+import re
 import requests
+from urllib.parse import urlparse
 from logger import logger
 
 def get_estimated_indexing_time(github_url: str) -> int:
@@ -26,3 +28,31 @@ def get_estimated_indexing_time(github_url: str) -> int:
         logger.warning(f"Failed to fetch GitHub repo size for ETA: {e}")
     
     return 45
+
+def sanitize_github_url(url: str) -> str:
+    """
+    Normalizes and validates a github URL
+    - Strips whitespace
+    - Ensures it uses https
+    - Validates it is a github.com domain
+    - Removes trailing .git or slashes
+    """
+
+    if not url:
+        return None
+    
+    url = url.strip().lower()
+
+    parsed = urlparse(url)
+
+    if parsed.netloc not in ["github.com", "www.github.com"]:
+        return None
+    
+    clean_path = parsed.path.rstrip('/')
+    if clean_path.endswith('.git'):
+        clean_path = clean_path[:-4]
+    
+    if not re.match(r'^/[a-z0-9\-_.]+/[a-z0-9\-_.]+$', clean_path):
+        return None
+    
+    return f"https://github.com{clean_path}"

@@ -31,7 +31,8 @@ class QueryRouter:
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": PROMPT}
-            ]
+            ],
+            temperature=0.3
         )
 
         try:

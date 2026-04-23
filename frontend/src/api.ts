@@ -106,6 +106,7 @@ export const apiClient = {
     if (res.status === 429) {
       throw new Error('429');
     }
+    if (res.status === 400) throw new Error('400');
     if (!res.ok) throw new Error('Failed to start indexing');
     return res.json();
   },

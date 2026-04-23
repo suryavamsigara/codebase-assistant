@@ -9,14 +9,22 @@ from api.schemas import IndexRequest
 from api.celery_worker import process_repo_task
 from logger import logger
 from api.limiter import limiter
-from api.utils import get_estimated_indexing_time
+from api.utils import get_estimated_indexing_time, sanitize_github_url
 
 router = APIRouter(prefix="/index", tags=["index"])
 
 @router.post("/", status_code=202)
 @limiter.limit("3/minute") # 3 indexes per minute per IP
 def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db)):
-    logger.info(f"Indexing request received for repo: {req.repo_name} ({req.github_url})")
+    clean_url = sanitize_github_url(req.github_url)
+
+    if not clean_url:
+        logger.warning(f"Rejected invalid GitHub URL from user: {req.github_url}")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid GitHub URL. Must be a valid public github.com repository."
+        )
+    logger.info(f"Indexing request received for repo: {req.repo_name} ({clean_url})")
 
     try:
         existing_task = db.execute(
@@ -42,14 +50,16 @@ def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db
                 }
 
         task_id = str(uuid.uuid4())
-        eta_seconds = get_estimated_indexing_time(req.github_url)
+        eta_seconds = get_estimated_indexing_time(clean_url)
 
         new_task = IndexTask(id=task_id, repo_name=req.repo_name, status="PENDING")
         db.add(new_task)
         db.commit()
 
+        # sanitize
+
         logger.info(f"Dispatched background task {task_id} for repo: {req.repo_name}")
-        process_repo_task.delay(task_id, req.github_url, req.repo_name)
+        process_repo_task.delay(task_id, clean_url, req.repo_name)
 
         return {
             "task_id": task_id,
