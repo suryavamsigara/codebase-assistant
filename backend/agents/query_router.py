@@ -14,11 +14,11 @@ class QueryRouter:
 
         SYSTEM_PROMPT = """
         You are a routing agent for a codebase assistant. 
-        Determine if the user's latest message requires searching the codebase for new files/code, or if it can be answered using the ongoing conversation history.
+        Determine if the user's latest message requires searching the codebase for new files/code, or if it can be answered using the ongoing conversation history. It mostly requires codebase.
         
         RULES:
-        - If they ask about a specific file, function, bug, or architecture, output "retrieve".
-        - If they ask a follow-up about the code you JUST showed them, ask for clarification, or make general conversation, output "chat_only".
+        - Output "retrieve" if the user asks about specific files, functions, bugs, architecture, OR general project overviews.
+        - Output "chat_only" ONLY if they are asking a direct follow-up about code you just discussed, or making casual small talk.
         
         Respond with ONLY a strict JSON object: {"decision": "retrieve"} or {"decision": "chat_only"}
         """
@@ -32,7 +32,7 @@ class QueryRouter:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": PROMPT}
             ],
-            temperature=0.3
+            temperature=0.0
         )
 
         try:

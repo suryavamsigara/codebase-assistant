@@ -106,8 +106,14 @@ export const apiClient = {
     if (res.status === 429) {
       throw new Error('429');
     }
-    if (res.status === 400) throw new Error('400');
-    if (!res.ok) throw new Error('Failed to start indexing');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const message = errorData.detail || 'Failed to start indexing';
+
+      const error = new Error(message);
+      (error as any).status = res.status;
+      throw error;
+    }
     return res.json();
   },
 

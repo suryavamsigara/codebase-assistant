@@ -163,12 +163,11 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
     } catch (err: any) {
       setIsIndexing(false);
       setTimeLeft(null);
+
       if (err.message === '429') {
         setToastMessage("You're doing that too fast. Please wait a moment.");
-      } else if (err.message == '400') {
-        setError("The provided URL is not a valid public GitHub repository.")
       } else {
-        setError("Failed to communicate with the indexing service.");
+        setError(err.message || "Failed to communicate with the indexing service.");
       }
     }
   };

@@ -3,10 +3,10 @@ import requests
 from urllib.parse import urlparse
 from logger import logger
 
-def get_estimated_indexing_time(github_url: str) -> int:
+def get_github_repo_stats(github_url: str) -> int:
     """
-    Fetches repo size from GitHub and calculates an estimated indexing time.
-    Returns the time in seconds.
+    Fetches repo size from GitHub.
+    Returns a tuple: (size_in_kb, estimated_seconds)
     """
     try:
         clean_url = github_url.rstrip('/')
@@ -18,16 +18,21 @@ def get_estimated_indexing_time(github_url: str) -> int:
             timeout=3
         )
 
+        if response.status_code == 400:
+            return -1, -1
+
         if response.status_code == 200:
             repo_data = response.json()
             size_kb = repo_data.get("size", 0)
 
             estimated_seconds = int(20 + (size_kb * 0.01))
-            return max(15, min(estimated_seconds, 600))
+            eta = max(15, min(estimated_seconds, 600))
+
+            return size_kb, eta
     except Exception as e:
-        logger.warning(f"Failed to fetch GitHub repo size for ETA: {e}")
+        logger.warning(f"Failed to fetch GitHub repo stats: {e}")
     
-    return 45
+    return 0, 45
 
 def sanitize_github_url(url: str) -> str:
     """
@@ -52,7 +57,7 @@ def sanitize_github_url(url: str) -> str:
     if clean_path.endswith('.git'):
         clean_path = clean_path[:-4]
     
-    if not re.match(r'^/[a-z0-9\-_.]+/[a-z0-9\-_.]+$', clean_path):
+    if not re.match(r'^/[a-z0-9-]+/[a-z0-9\-_.]+$', clean_path) or '..' in clean_path:
         return None
     
     return f"https://github.com{clean_path}"

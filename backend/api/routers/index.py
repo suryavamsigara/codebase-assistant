@@ -9,9 +9,11 @@ from api.schemas import IndexRequest
 from api.celery_worker import process_repo_task
 from logger import logger
 from api.limiter import limiter
-from api.utils import get_estimated_indexing_time, sanitize_github_url
+from api.utils import get_github_repo_stats, sanitize_github_url
 
 router = APIRouter(prefix="/index", tags=["index"])
+
+MAX_REPO_SIZE_KB = 20000
 
 @router.post("/", status_code=202)
 @limiter.limit("3/minute") # 3 indexes per minute per IP
@@ -24,6 +26,23 @@ def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db
             status_code=400,
             detail="Invalid GitHub URL. Must be a valid public github.com repository."
         )
+    
+    size_kb, eta_seconds = get_github_repo_stats(clean_url)
+
+    if size_kb == -1:
+        logger.warning(f"Rejected {req.repo_name}: Repository not found or is private.")
+        raise HTTPException(
+            status_code=404, 
+            detail="Repository not found. Please ensure the URL is correct and the repository is public."
+        )
+
+    if size_kb > MAX_REPO_SIZE_KB:
+        logger.warning(f"Rejected {req.repo_name}: Size: {size_kb}KB exceeds limit.")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Repository is too large ({size_kb / 1024:.1f} MB). The maximum allowed size is {MAX_REPO_SIZE_KB / 1024:.1f} MB"
+        )
+
     logger.info(f"Indexing request received for repo: {req.repo_name} ({clean_url})")
 
     try:
@@ -50,7 +69,6 @@ def index_repo(request: Request, req: IndexRequest, db: Session = Depends(get_db
                 }
 
         task_id = str(uuid.uuid4())
-        eta_seconds = get_estimated_indexing_time(clean_url)
 
         new_task = IndexTask(id=task_id, repo_name=req.repo_name, status="PENDING")
         db.add(new_task)

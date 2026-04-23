@@ -81,8 +81,14 @@ class RAGOrchestrator:
                 conversation_id
             )
 
-        logger.info("Calling decide function")
-        decision = await self.router.decide(query, history)
+        if len(history) == 0:
+            yield {"type": "status", "message": "Searching codebase.."}
+            logger.info("Setting decision as retrieve for initial query.")
+            decision = "retrieve"
+        else:
+            yield {"type": "status", "message": "Routing request"}
+            logger.info("Calling decide function.")
+            decision = await self.router.decide(query, history)
 
         retrieved_chunks = []
         answer_text = ""
