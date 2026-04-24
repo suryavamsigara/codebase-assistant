@@ -12,9 +12,9 @@ COPY pyproject.toml uv.lock* ./
 
 RUN uv sync --frozen
 
-COPY . .
-
 RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+
+COPY . .
 
 EXPOSE 8000
 
