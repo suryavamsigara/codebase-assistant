@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 from contextlib import asynccontextmanager
@@ -18,7 +19,13 @@ async def lifespan(app: FastAPI):
 
     try:
         logger.info("Initializing database tables...")
-        # Create the database tables
+
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
+            logger.info("pgvector extension verified")
+        
+        logger.info("Verifying database tables...")
         Base.metadata.create_all(bind=engine)
         logger.info("Database connection and tables verified.")
 
