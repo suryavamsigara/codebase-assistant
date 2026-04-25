@@ -7,7 +7,8 @@ import {
   Terminal, 
   PanelLeftClose, 
   PanelLeftOpen, 
-  UserCircle 
+  UserCircle,
+  Sparkles
 } from 'lucide-react';
 import { apiClient } from '../api';
 import type { User } from '../types';
@@ -98,19 +99,19 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
-    if (!url.trim() || isIndexing) return;
-    
-    const parsedData = extractRepoData(url);
+  const runIndexing = async (targetUrl: string) => {
+    if (!targetUrl.trim() || isIndexing) return;
+
+    const parsedData = extractRepoData(targetUrl);
     if (!parsedData) {
       setError("Invalid format. Use a full GitHub URL or 'user/repo'.");
       return;
     }
-
+    
+    setUrl(targetUrl);
     setIsIndexing(true);
     setError(null);
-    setTimeLeft(null); // Reset timer on new submission
+    setTimeLeft(null);
     setStatusText('Contacting orchestrator...');
 
     try {
@@ -149,7 +150,7 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
           } else if (status === 'FAILED' || status === 'FAILURE') {
             clearInterval(pollInterval);
             setIsIndexing(false);
-            setTimeLeft(null); // Kill the timer on error
+            setTimeLeft(null);
             setError("Indexing failed on the server.");
           }
         } catch (err) {
@@ -170,6 +171,11 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
         setError(err.message || "Failed to communicate with the indexing service.");
       }
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault(); 
+    runIndexing(url);    
   };
 
   return (
@@ -251,6 +257,28 @@ export const ZeroState: React.FC<ZeroStateProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Demo */}
+          <AnimatePresence>
+            {!isIndexing && !error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-6 flex items-center justify-center gap-3 text-sm"
+              >
+                <span className="text-neutral-400 dark:text-neutral-500">Not sure what to try?</span>
+                <button
+                  type="button"
+                  onClick={() => runIndexing('https://github.com/huggingface/ml-intern')}
+                  className="group flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-black/5 dark:border-white/10 rounded-full hover:border-blue-500/30 hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-all text-neutral-700 dark:text-neutral-300 shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500 group-hover:animate-pulse" />
+                  <span className="font-medium tracking-tight">huggingface/ml-intern</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           {/* Status, Errors, and Timer */}
           <div className="min-h-[3.5rem] mt-4 flex items-start justify-center text-sm">

@@ -9,7 +9,7 @@ class RepoWalker:
         self.skip_dirs = {
             "venv", ".venv", ".env", "node_modules", "dist", ".git",
             "__pycache__", "build", ".next", ".cache", ".pytest_cache",
-            ".vscode", "public"
+            ".vscode", "public", "prompts"
         }
 
         self.skip_files = {
