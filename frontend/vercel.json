@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/proxy-api/:path*",
-      "destination": "https://askrepo-api.duckdns.org*"
+      "destination": "https://askrepo-api.duckdns.org/api/:path*"
     },
     {
       "source": "/((?!proxy-api/).*)",
