@@ -1,11 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/proxy-api/:path*",
       "destination": "https://askrepo-api.duckdns.org*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!proxy-api/).*)",
       "destination": "/index.html"
     }
   ]
